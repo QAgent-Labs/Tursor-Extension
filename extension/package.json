@@ -1,0 +1,36 @@
+{
+  "name": "tursor",
+  "displayName": "Tursor / Tursor",
+  "description": "Tursor UI in a VS Code / Cursor webview panel",
+  "version": "0.0.1",
+  "publisher": "tursor",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:tursor.openPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tursor.openPanel",
+        "title": "Tursor: Open panel"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -p . --watch",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "~5.9.3",
+    "@vscode/vsce": "^3.6.0"
+  }
+}
