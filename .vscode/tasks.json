@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-webview",
+      "type": "npm",
+      "script": "build:webview",
+      "path": "${workspaceFolder}",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "compile-extension",
+      "type": "npm",
+      "script": "compile",
+      "path": "${workspaceFolder}/extension",
+      "problemMatcher": "$tsc",
+      "dependsOn": ["build-webview"],
+      "dependsOrder": "sequence",
+      "presentation": { "reveal": "silent" },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
