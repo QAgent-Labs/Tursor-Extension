@@ -25,7 +25,7 @@
   "scripts": {
     "compile": "tsc -p .",
     "watch": "tsc -p . --watch",
-    "package": "vsce package"
+    "package": "vsce package --allow-missing-repository --skip-license"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",

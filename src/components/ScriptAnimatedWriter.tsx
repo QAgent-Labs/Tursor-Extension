@@ -22,7 +22,7 @@ const scriptLines: Line[] = [
 
   { text: 'DIR="$HOME/.tursor"', color: "text-yellow-300" },
   { text: "" },
-  { text: "" }, // 👈 group separation
+  { text: "" },
 
   { text: "# Clone or update repo", color: "text-gray-500" },
 
@@ -42,13 +42,13 @@ const scriptLines: Line[] = [
   { text: "else", color: "text-purple-400" },
 
   {
-    text: 'git clone https://github.com/QAgent-Labs/Tursor-Extension.git "$DIR"  ',
+    text: 'git clone https://github.com/QAgent-Labs/Tursor-Backend.git "$DIR"',
     indent: 2,
     parts: [
       { text: "git", color: "text-green-400" },
       { text: " clone ", color: "text-white" },
       {
-        text: "https://github.com/QAgent-Labs/Tursor-Extension.git",
+        text: "https://github.com/QAgent-Labs/Tursor-Backend.git",
         color: "text-blue-400",
       },
       { text: ' "$DIR"', color: "text-yellow-300" },
@@ -67,7 +67,7 @@ const scriptLines: Line[] = [
   { text: "fi", color: "text-purple-400" },
 
   { text: "" },
-  { text: "" }, // 👈 group separation
+  { text: "" },
 
   { text: "# Install dependencies", color: "text-gray-500" },
 
@@ -80,66 +80,41 @@ const scriptLines: Line[] = [
   },
 
   { text: "" },
-  { text: "" }, // 👈 group separation
 
-  { text: "# Start backend", color: "text-gray-500" },
+  { text: "# Build project", color: "text-gray-500" },
 
   {
-    text: "nohup npm run start > tursor.log 2>&1 &",
+    text: "npm run build",
     parts: [
-      { text: "nohup", color: "text-orange-400" },
-      { text: " ", color: "text-white" },
       { text: "npm", color: "text-orange-400" },
       { text: " run ", color: "text-white" },
-      { text: "start", color: "text-green-400" },
-      { text: " > tursor.log 2>&1 &", color: "text-gray-400" },
+      { text: "build", color: "text-green-400" },
     ],
   },
 
   { text: "" },
 
+  { text: "# Register CLI globally", color: "text-gray-500" },
+
   {
-    text: "sleep 2",
+    text: "npm install -g .",
     parts: [
-      { text: "sleep", color: "text-orange-400" },
-      { text: " 2", color: "text-white" },
+      { text: "npm", color: "text-orange-400" },
+      { text: " install -g ", color: "text-white" },
+      { text: ".", color: "text-yellow-300" },
     ],
   },
 
   { text: "" },
-  { text: "" }, // 👈 group separation
+  { text: "" },
 
-  { text: "# Basic health check", color: "text-gray-500" },
-
-  {
-    text: 'curl -s http://localhost:9090/health | grep -q "ok" \\',
-    parts: [
-      { text: "curl", color: "text-orange-400" },
-      { text: " -s ", color: "text-white" },
-      { text: "http://localhost:9090/health", color: "text-blue-400" },
-      { text: ' | grep -q "ok" \\', color: "text-white" },
-    ],
-  },
+  { text: "# Start Tursor", color: "text-gray-500" },
 
   {
-    text: '&& echo "Tursor running at http://localhost:9090" \\',
-    indent: 2,
+    text: "tursor start",
     parts: [
-      { text: "echo", color: "text-orange-400" },
-      { text: ' "Tursor running at ', color: "text-white" },
-      { text: "http://localhost:9090", color: "text-blue-400" },
-      { text: '" \\', color: "text-white" },
-    ],
-  },
-
-  {
-    text: '|| echo "Started, check logs at ~/.tursor/tursor.log"',
-    indent: 2,
-    parts: [
-      { text: "echo", color: "text-orange-400" },
-      { text: ' "Started, check logs at ', color: "text-white" },
-      { text: "~/.tursor/tursor.log", color: "text-yellow-300" },
-      { text: '"', color: "text-white" },
+      { text: "tursor", color: "text-green-400" },
+      { text: " start", color: "text-white" },
     ],
   },
 ];

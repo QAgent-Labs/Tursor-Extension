@@ -8,7 +8,7 @@ export default function ErrorPage() {
     <div className="h-full w-[100%] flex flex-col items-space-between justify-space-between">
       <AnimatedBackground />
       <div className="h-screen flex flex-col z-10 ">
-        <TursorHeader />
+        <TursorHeader showHomeButton={false} />
         <main className="flex flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
           <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
             Error
