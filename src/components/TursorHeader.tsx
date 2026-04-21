@@ -1,7 +1,11 @@
 import { Bot, HomeIcon, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function TursorHeader() {
+export default function TursorHeader({
+  showHomeButton = true,
+}: {
+  showHomeButton?: boolean;
+}) {
   const navigate = useNavigate();
   return (
     <div className="h-[10%] flex border-b-1 border-gray-700 items-center justify-space-between mb-5">
@@ -14,13 +18,15 @@ export default function TursorHeader() {
           Tursor
         </h1>
       </div>
-      <button
-        onClick={() => navigate("/")}
-        className="w-[10%] flex flex-row gap-2 align-center justify-center  font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent"
-      >
-        <HomeIcon className="text-cyan-500" />
-        <h1>Home</h1>
-      </button>
+      {showHomeButton ? (
+        <button
+          onClick={() => navigate("/")}
+          className="w-[10%] flex flex-row gap-2 align-center justify-center  font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent"
+        >
+          <HomeIcon className="text-cyan-500" />
+          <h1>Home</h1>
+        </button>
+      ) : null}
     </div>
   );
 }
