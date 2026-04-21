@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs";
 import * as vscode from "vscode";
+import { createTursorSocketHostBridge } from "./tursorSocketHost";
 
 const PANEL_VIEW_TYPE = "tursorPanel";
 const STATUS_PREFIX = "__TURSOR_STATUS__";
@@ -173,12 +174,23 @@ function getWebviewHtml(
     },
   );
 
+  const connectHosts = ["127.0.0.1", "localhost"] as const;
+  const connectPorts = [9090, 8080, 3000, 8765, 5173] as const;
+  const connectParts: string[] = [webview.cspSource];
+  for (const host of connectHosts) {
+    for (const port of connectPorts) {
+      connectParts.push(`http://${host}:${port}`, `ws://${host}:${port}`);
+    }
+  }
+  const connectSrc = connectParts.join(" ");
+
   const csp = [
     `default-src 'none'`,
     `style-src ${webview.cspSource} 'unsafe-inline'`,
     `script-src ${webview.cspSource}`,
     `img-src ${webview.cspSource} https: data:`,
     `font-src ${webview.cspSource}`,
+    `connect-src ${connectSrc}`,
   ].join("; ");
 
   html = html.replace(
@@ -208,15 +220,20 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     let installChild: ChildProcess | null = null;
+    const socketBridge = createTursorSocketHostBridge(panel.webview);
 
     panel.webview.html = getWebviewHtml(context.extensionUri, panel.webview);
 
     panel.onDidDispose(() => {
+      socketBridge.dispose();
       installChild?.kill("SIGTERM");
       installChild = null;
     });
 
     panel.webview.onDidReceiveMessage((message: unknown) => {
+      if (socketBridge.handleWebviewMessage(message)) {
+        return;
+      }
       if (isRunInstallMessage(message)) {
         installChild?.kill("SIGTERM");
         installChild = null;

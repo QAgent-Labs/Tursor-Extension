@@ -1,3 +1,5 @@
+import { ensureHostSocketBridgeTap } from "./vscodeHostSocketBridge";
+
 /**
  * VS Code / Cursor injects `acquireVsCodeApi` into the webview once.
  * Use postMessage / onDidReceiveMessage in extension.ts to talk to Node (run shell, files, etc.).
@@ -16,6 +18,7 @@ let cached: VsCodeApi | null | undefined;
 
 export function getVsCodeApi(): VsCodeApi | null {
   if (cached !== undefined) {
+    if (cached) ensureHostSocketBridgeTap();
     return cached;
   }
   const g = globalThis as GlobalWithVsCode;
@@ -28,5 +31,6 @@ export function getVsCodeApi(): VsCodeApi | null {
   } else {
     cached = null;
   }
+  if (cached) ensureHostSocketBridgeTap();
   return cached;
 }
