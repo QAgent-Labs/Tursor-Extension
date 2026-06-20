@@ -1,27 +1,24 @@
 import { AnimatedBackground } from "../components/AnimatedBackground";
+import { TursorLogo } from "../components/TursorLogo";
+import { tursorWordmarkTextGradientClassName } from "../components/tursorWordmarkClasses";
 import { motion } from "motion/react";
-import { Bot, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export default function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950">
+    <div className="relative flex min-h-[100dvh] w-full max-w-[100vw] items-center justify-center overflow-x-hidden bg-slate-950">
       <AnimatedBackground />
-      <div className="relative z-10 text-center px-8 max-w-4xl">
+      <div className="relative z-10 w-full max-w-4xl px-4 py-10 text-center sm:px-8 sm:py-12">
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="flex items-center justify-center mb-8"
         >
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 blur-2xl opacity-50 rounded-full" />
-            <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-3xl border border-slate-700/50 shadow-2xl">
-              <Bot className="w-16 h-16 text-cyan-400" />
-              <Sparkles className="absolute -top-3 -right-3 w-6 h-6 text-purple-400" />
-            </div>
+          <div className="relative inline-block">
+            <TursorLogo className="mx-auto h-16 w-16 object-contain sm:h-20 sm:w-20 md:h-24 md:w-24" />
           </div>
         </motion.div>
 
@@ -30,7 +27,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.8 }}
-          className="text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent pb-5"
+          className={`mx-auto text-4xl font-bold sm:text-5xl md:text-6xl lg:text-7xl mb-4 pb-2 sm:mb-6 sm:pb-5 ${tursorWordmarkTextGradientClassName}`}
         >
           Tursor
         </motion.h1>
@@ -40,7 +37,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-xl text-slate-400 mb-4"
+          className="mb-3 text-lg text-slate-400 sm:mb-4 sm:text-xl"
         >
           AI-Powered QA Agent for Code Editors
         </motion.p>
@@ -49,7 +46,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.8 }}
-          className="text-slate-500 mb-12 max-w-2xl mx-auto"
+          className="mx-auto mb-8 max-w-2xl text-sm text-slate-500 sm:mb-12 sm:text-base"
         >
           Autonomous testing intelligence integrated directly into your
           development workflow. Catch bugs before they ship with next-generation
@@ -62,9 +59,9 @@ export default function HomePage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.8, duration: 0.5, ease: "easeOut" }}
           onClick={() => navigate("/setup")}
-          className="relative group px-12 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-lg shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300"
+          className="relative group mx-auto w-full max-w-xs rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-3.5 text-base font-semibold text-white shadow-2xl shadow-blue-500/30 transition-all duration-300 hover:shadow-blue-500/50 sm:max-w-none sm:px-12 sm:py-4 sm:text-lg"
         >
-          <span className="relative z-10">Get Started</span>
+          <span className="relative z-10 max-w-[50%]">Get Started</span>
           <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 blur transition-opacity duration-300" />
         </motion.button>
 
@@ -73,7 +70,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 0.8 }}
-          className="mt-16 flex flex-wrap gap-4 justify-center"
+          className="mt-10 flex flex-wrap justify-center gap-3 sm:mt-16 sm:gap-4"
         >
           {[
             "Autonomous Testing",
@@ -82,7 +79,7 @@ export default function HomePage() {
           ].map((feature) => (
             <div
               key={feature}
-              className="px-6 py-2 rounded-full bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm text-slate-300 text-sm"
+              className="rounded-full border border-slate-700/50 bg-slate-800/50 px-4 py-2 text-xs text-slate-300 backdrop-blur-sm sm:px-6 sm:text-sm"
             >
               {feature}
             </div>

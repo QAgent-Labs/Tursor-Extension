@@ -117,11 +117,7 @@ function PersistentDashLine() {
   );
 }
 
-function VerticalDashConnector({
-  onComplete,
-}: {
-  onComplete: () => void;
-}) {
+function VerticalDashConnector({ onComplete }: { onComplete: () => void }) {
   const firedRef = useRef(false);
 
   const handleLastDashComplete = useCallback(() => {
@@ -176,7 +172,9 @@ function StepRow({
       }
     >
       <StepIcon status={status} />
-      <span className={`text-sm ${stepLabelClass(status)}`}>
+      <span
+        className={`min-w-0 flex-1 break-words text-left text-sm ${stepLabelClass(status)}`}
+      >
         {stepLabel(phase, status, checkInstallCliPresent)}
       </span>
     </div>

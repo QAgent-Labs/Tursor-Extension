@@ -12,6 +12,7 @@ import {
   type TursorWsStatus,
 } from "./tursorWebSocketContext";
 import { io, type Socket } from "socket.io-client";
+import { env } from "../env";
 import { getVsCodeApi } from "../vscodeApi";
 import {
   setHostSocketBridgeHandler,
@@ -20,9 +21,6 @@ import {
 
 type Listener = (data: unknown) => void;
 
-/** Prefer IPv4 loopback: `localhost` can resolve to ::1 while the server listens on 127.0.0.1 only. */
-const DEFAULT_SOCKET_URL = "http://127.0.0.1:9090";
-const DEFAULT_SOCKET_PATH = "/ws";
 /** Polling first: extension host (Node) tolerates this; webview uses host bridge instead of browser XHR. */
 const TRANSPORTS = ["polling", "websocket"] as const;
 
@@ -41,15 +39,14 @@ function preferIpv4Loopback(url: string): string {
 }
 
 function resolveSocketUrl(): string {
-  const fromEnv = import.meta.env.VITE_TURSOR_SOCKET_URL as string | undefined;
-  const raw = fromEnv?.trim() ? fromEnv.trim() : DEFAULT_SOCKET_URL;
+  const raw = env.tursorSocketUrl;
+  if (!raw) return "";
   return preferIpv4Loopback(raw);
 }
 
 function resolveSocketPath(): string {
-  const fromEnv = import.meta.env.VITE_TURSOR_SOCKET_PATH as string | undefined;
-  if (fromEnv?.trim()) return fromEnv.trim();
-  return DEFAULT_SOCKET_PATH;
+  const p = env.tursorSocketPath;
+  return p ?? "";
 }
 
 function disposeSocket(socket: Socket) {
@@ -136,6 +133,13 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
     const url = resolveSocketUrl();
     const path = resolveSocketPath();
     setLastError(null);
+
+    if (!url) {
+      setLastError("Set VITE_TURSOR_SOCKET_URL in the project root .env (see .env.example).");
+      setStatus("error");
+      return;
+    }
+
     setStatus("connecting");
 
     if (vscode) {

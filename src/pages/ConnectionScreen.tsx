@@ -40,26 +40,29 @@ export function ConnectingScreen() {
   const failed = status === "error";
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950">
+    <div className="relative flex min-h-[100dvh] w-full max-w-[100vw] items-center justify-center overflow-x-hidden overflow-y-auto bg-slate-950">
       <AnimatedBackground />
 
-      <div className="relative z-10 text-center px-8">
-        <div className="flex items-center justify-center gap-12 mb-12">
+      <div className="relative z-10 mx-auto w-full max-w-4xl px-4 py-8 text-center sm:px-8">
+        <div className="mb-10 flex flex-col items-center justify-center gap-10 sm:mb-12 md:flex-row md:gap-8 lg:gap-12">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
+            className="flex flex-col items-center"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-cyan-500/30 blur-2xl rounded-full" />
-              <div className="relative p-6 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 shadow-2xl">
-                <Laptop className="w-12 h-12 text-cyan-400" />
+              <div className="absolute inset-0 rounded-full bg-cyan-500/30 blur-2xl" />
+              <div className="relative rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800 to-slate-900 p-4 shadow-2xl sm:p-6">
+                <Laptop className="h-10 w-10 text-cyan-400 sm:h-12 sm:w-12" />
               </div>
             </div>
-            <p className="mt-4 text-sm text-slate-400 font-medium">Frontend</p>
+            <p className="mt-3 text-xs font-medium text-slate-400 sm:mt-4 sm:text-sm">
+              Frontend
+            </p>
           </motion.div>
 
-          <div className="relative flex w-40 h-20 items-center justify-center">
+          <div className="relative mx-auto flex h-16 w-full max-w-xs items-center justify-center sm:h-20 sm:w-40 md:mx-0">
             <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2">
               <div className="relative h-full w-full overflow-hidden rounded-full">
                 <motion.div
@@ -95,7 +98,7 @@ export function ConnectingScreen() {
               className="relative z-10"
               animate={
                 waitingForSocket
-                  ? { scale: [1, 1.08, 1], rotate: [0, 360] }
+                  ? { scale: [1, 1.08, 1] }
                   : failed
                     ? { scale: 1 }
                     : { scale: [1, 1.06, 1] }
@@ -107,11 +110,6 @@ export function ConnectingScreen() {
                         duration: 1.2,
                         repeat: Infinity,
                         ease: "easeInOut",
-                      },
-                      rotate: {
-                        duration: 2.8,
-                        repeat: Infinity,
-                        ease: "linear",
                       },
                     }
                   : failed
@@ -157,14 +155,17 @@ export function ConnectingScreen() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
+            className="flex flex-col items-center"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-purple-500/30 blur-2xl rounded-full" />
-              <div className="relative p-6 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 shadow-2xl">
-                <Server className="w-12 h-12 text-purple-400" />
+              <div className="absolute inset-0 rounded-full bg-purple-500/30 blur-2xl" />
+              <div className="relative rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800 to-slate-900 p-4 shadow-2xl sm:p-6">
+                <Server className="h-10 w-10 text-purple-400 sm:h-12 sm:w-12" />
               </div>
             </div>
-            <p className="mt-4 text-sm text-slate-400 font-medium">Backend</p>
+            <p className="mt-3 text-xs font-medium text-slate-400 sm:mt-4 sm:text-sm">
+              Backend
+            </p>
           </motion.div>
         </div>
 
@@ -173,10 +174,10 @@ export function ConnectingScreen() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h2 className="text-3xl font-bold text-white mb-3">
+          <h2 className="mb-3 text-2xl font-bold text-white sm:text-3xl">
             {failed ? "Connection failed" : "Establishing Connection"}
           </h2>
-          <p className="text-slate-400">
+          <p className="mx-auto max-w-lg text-sm text-slate-400 sm:text-base">
             {failed
               ? (lastError ??
                 "Could not reach the Tursor backend over WebSocket.")

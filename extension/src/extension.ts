@@ -1,7 +1,26 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs";
+import * as path from "node:path";
 import * as vscode from "vscode";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
 import { createTursorSocketHostBridge } from "./tursorSocketHost";
+
+const outDir = __dirname;
+const extensionRoot = path.join(outDir, "..");
+const repoRoot = path.join(outDir, "../..");
+dotenv.config({ path: path.join(extensionRoot, ".env") });
+dotenv.config({ path: path.join(repoRoot, ".env"), override: true });
+
+function backendHttpOrigin(): string {
+  const raw = process.env.VITE_TURSOR_SOCKET_URL?.trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "";
+  }
+}
 
 const PANEL_VIEW_TYPE = "tursorPanel";
 const STATUS_PREFIX = "__TURSOR_STATUS__";
@@ -34,18 +53,18 @@ function isRunInstallMessage(msg: unknown): msg is WebviewToHostMessage {
 
 function parseStatusLine(line: string): InstallStatusPayload | null {
   const idx = line.indexOf(STATUS_PREFIX);
-  if (idx === -1) {
-    return null;
-  }
+  if (idx === -1) return null;
+
   const jsonPart = line.slice(idx + STATUS_PREFIX.length).trim();
+
   try {
-    const raw = JSON.parse(jsonPart) as unknown;
-    if (!raw || typeof raw !== "object") {
-      return null;
-    }
-    const o = raw as Record<string, unknown>;
-    const phase = o.phase;
-    const state = o.state;
+    const raw = JSON.parse(jsonPart) as Record<string, unknown>;
+
+    if (!raw || typeof raw !== "object") return null;
+
+    const phase = raw.phase;
+    const state = raw.state;
+
     if (
       phase !== "check_install" &&
       phase !== "clone_repo" &&
@@ -55,27 +74,82 @@ function parseStatusLine(line: string): InstallStatusPayload | null {
     ) {
       return null;
     }
+
     if (state !== "start" && state !== "done" && state !== "skipped") {
       return null;
     }
-    const payload: InstallStatusPayload = { phase, state };
-    if (typeof o.ok === "boolean") {
-      payload.ok = o.ok;
-    }
-    if (typeof o.installed === "boolean") {
-      payload.installed = o.installed;
-    }
-    if (typeof o.message === "string") {
-      payload.message = o.message;
-    }
-    if (typeof o.detail === "string") {
-      payload.detail = o.detail;
-    }
-    return payload;
+
+    return {
+      phase,
+      state,
+      ok: raw.ok as boolean | undefined,
+      installed: raw.installed as boolean | undefined,
+      message: raw.message as string | undefined,
+      detail: raw.detail as string | undefined,
+    };
   } catch {
     return null;
   }
 }
+
+/* ---------------- Backend Communication ---------------- */
+
+async function sendRootToBackend(rootPath: string) {
+  const origin = backendHttpOrigin();
+  if (!origin) {
+    console.warn(
+      "[Tursor] VITE_TURSOR_SOCKET_URL missing in .env — skipping context/init",
+    );
+    return;
+  }
+  try {
+    await fetch(`${origin}/context/init`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ rootPath }),
+    });
+
+    console.log("[Tursor] Root path sent:", rootPath);
+  } catch (err) {
+    console.error("[Tursor] Failed to send root path", err);
+  }
+}
+
+async function notifyFileChange(path: string) {
+  const origin = backendHttpOrigin();
+  if (!origin) {
+    return;
+  }
+  try {
+    await fetch(`${origin}/context/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ path }),
+    });
+
+    console.log("[Tursor] File change sent:", path);
+  } catch (err) {
+    console.error("[Tursor] Failed to notify file change", err);
+  }
+}
+
+/* ---------------- Helpers ---------------- */
+
+function shouldIgnore(path: string): boolean {
+  return (
+    path.includes("node_modules") ||
+    path.includes(".git") ||
+    path.includes("dist") ||
+    path.includes(".next") ||
+    path.includes("build")
+  );
+}
+
+/* ---------------- Install Script Runner ---------------- */
 
 function runInstallScript(
   webview: vscode.Webview,
@@ -87,9 +161,10 @@ function runInstallScript(
     "scripts",
     "install-tursor.sh",
   );
+
   if (!fs.existsSync(scriptUri.fsPath)) {
     void vscode.window.showErrorMessage(
-      "install-tursor.sh is missing from this extension. Run npm run build:webview from the repo root, then reload the window.",
+      "install-tursor.sh is missing from extension",
     );
     void webview.postMessage({ type: "tursorInstallFinished", code: 1 });
     onSpawn(null);
@@ -97,17 +172,21 @@ function runInstallScript(
   }
 
   const bash = process.platform === "win32" ? "bash" : "/bin/bash";
+
   const child = spawn(bash, [scriptUri.fsPath], {
     env: { ...process.env },
     stdio: ["ignore", "pipe", "pipe"],
   });
+
   onSpawn(child);
 
   let incompleteLine = "";
+
   const onChunk = (chunk: Buffer) => {
     incompleteLine += chunk.toString("utf8");
     const lines = incompleteLine.split("\n");
     incompleteLine = lines.pop() ?? "";
+
     for (const line of lines) {
       const payload = parseStatusLine(line);
       if (payload) {
@@ -122,25 +201,7 @@ function runInstallScript(
   child.stdout?.on("data", onChunk);
   child.stderr?.on("data", onChunk);
 
-  child.on("error", (err) => {
-    console.error("[Tursor install]", err);
-    void webview.postMessage({
-      type: "tursorInstallFinished",
-      code: 1,
-    });
-    onSpawn(null);
-  });
-
   child.on("close", (code) => {
-    if (incompleteLine.trim()) {
-      const payload = parseStatusLine(incompleteLine);
-      if (payload) {
-        void webview.postMessage({
-          type: "tursorInstallStatus",
-          payload,
-        });
-      }
-    }
     void webview.postMessage({
       type: "tursorInstallFinished",
       code,
@@ -149,67 +210,98 @@ function runInstallScript(
   });
 }
 
-/**
- * Rewrites ./relative asset URLs in the built index.html to vscode-webview: URIs
- * so the UI loads inside the webview sandbox.
- */
+/* ---------------- Webview HTML ---------------- */
+
 function getWebviewHtml(
   extensionUri: vscode.Uri,
   webview: vscode.Webview,
 ): string {
   const webviewRoot = vscode.Uri.joinPath(extensionUri, "media", "webview");
   const indexPath = vscode.Uri.joinPath(webviewRoot, "index.html");
+
   let html = fs.readFileSync(indexPath.fsPath, "utf8");
 
   html = html.replace(
     /(src|href)="(\.\/[^"]+)"/g,
     (_match, attr: string, relPath: string) => {
       const relative = relPath.replace(/^\.\//, "");
-      const assetUri = vscode.Uri.joinPath(
-        webviewRoot,
-        ...relative.split("/").filter(Boolean),
-      );
-      const webviewUri = webview.asWebviewUri(assetUri).toString();
-      return `${attr}="${webviewUri}"`;
+      const assetUri = vscode.Uri.joinPath(webviewRoot, ...relative.split("/"));
+      return `${attr}="${webview.asWebviewUri(assetUri)}"`;
     },
   );
 
-  const connectHosts = ["127.0.0.1", "localhost"] as const;
-  const connectPorts = [9090, 8080, 3000, 8765, 5173] as const;
-  const connectParts: string[] = [webview.cspSource];
-  for (const host of connectHosts) {
-    for (const port of connectPorts) {
-      connectParts.push(`http://${host}:${port}`, `ws://${host}:${port}`);
-    }
-  }
-  const connectSrc = connectParts.join(" ");
-
-  const csp = [
-    `default-src 'none'`,
-    `style-src ${webview.cspSource} 'unsafe-inline'`,
-    `script-src ${webview.cspSource}`,
-    `img-src ${webview.cspSource} https: data:`,
-    `font-src ${webview.cspSource}`,
-    `connect-src ${connectSrc}`,
-  ].join("; ");
+  const csp = `
+    default-src 'none';
+    style-src ${webview.cspSource} 'unsafe-inline';
+    script-src ${webview.cspSource};
+    img-src ${webview.cspSource} https: data:;
+    font-src ${webview.cspSource};
+    connect-src ${webview.cspSource} http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*;
+    frame-src https: http: data: blob: ${webview.cspSource};
+  `;
 
   html = html.replace(
     "<head>",
-    `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}">`,
+    `<head><meta http-equiv="Content-Security-Policy" content="${csp}">`,
   );
 
   return html;
 }
 
-export function activate(context: vscode.ExtensionContext): void {
-  const open = vscode.commands.registerCommand("tursor.openPanel", () => {
-    const column =
-      vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+/* ---------------- Activate ---------------- */
 
+export function activate(context: vscode.ExtensionContext): void {
+  const folders = vscode.workspace.workspaceFolders;
+
+  if (!folders || folders.length === 0) {
+    vscode.window.showErrorMessage("No workspace folder opened");
+    return;
+  }
+
+  let rootPath = folders[0].uri.fsPath;
+  sendRootToBackend(rootPath);
+
+  /* ---- Watch workspace changes ---- */
+  const workspaceListener = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) return;
+
+    rootPath = folders[0].uri.fsPath;
+    sendRootToBackend(rootPath);
+  });
+
+  /* ---- File watcher with debounce ---- */
+  const watcher = vscode.workspace.createFileSystemWatcher("**/*");
+
+  const debounceMap = new Map<string, NodeJS.Timeout>();
+
+  function notifyFileChangeDebounced(path: string) {
+    if (shouldIgnore(path)) return;
+
+    if (debounceMap.has(path)) {
+      clearTimeout(debounceMap.get(path)!);
+    }
+
+    const timeout = setTimeout(() => {
+      notifyFileChange(path);
+      debounceMap.delete(path);
+    }, 300);
+
+    debounceMap.set(path, timeout);
+  }
+
+  watcher.onDidChange((uri) => notifyFileChangeDebounced(uri.fsPath));
+  watcher.onDidCreate((uri) => notifyFileChangeDebounced(uri.fsPath));
+  watcher.onDidDelete((uri) => notifyFileChangeDebounced(uri.fsPath));
+
+  context.subscriptions.push(watcher, workspaceListener);
+
+  /* ---- Command: Open Panel ---- */
+  const open = vscode.commands.registerCommand("tursor.openPanel", () => {
     const panel = vscode.window.createWebviewPanel(
       PANEL_VIEW_TYPE,
       "Tursor",
-      column,
+      vscode.ViewColumn.One,
       {
         enableScripts: true,
         retainContextWhenHidden: true,
@@ -231,17 +323,16 @@ export function activate(context: vscode.ExtensionContext): void {
     });
 
     panel.webview.onDidReceiveMessage((message: unknown) => {
-      if (socketBridge.handleWebviewMessage(message)) {
-        return;
-      }
+      if (socketBridge.handleWebviewMessage(message)) return;
+
       if (isRunInstallMessage(message)) {
         installChild?.kill("SIGTERM");
-        installChild = null;
         runInstallScript(panel.webview, context.extensionUri, (c) => {
           installChild = c;
         });
         return;
       }
+
       console.log("[Tursor webview]", message);
     });
   });

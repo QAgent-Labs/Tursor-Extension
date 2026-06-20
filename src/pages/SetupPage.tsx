@@ -10,6 +10,8 @@ import {
   type InstallHostToWebviewMessage,
 } from "../types/installStatus";
 import { getVsCodeApi } from "../vscodeApi";
+import { isBrowserMockRuntime } from "../appRuntime";
+import { runBrowserMockInstall } from "../browserMockInstall";
 import { Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -60,6 +62,16 @@ export default function SetupPage() {
   }, [navigate]);
 
   const handleInstallClick = useCallback(() => {
+    if (isBrowserMockRuntime()) {
+      setInstallSession((s) => s + 1);
+      setShowInstallSteps(true);
+      setSteps(createInitialStepMap());
+      setCheckInstallCliPresent(undefined);
+      setInstallRunning(true);
+      void runBrowserMockInstall();
+      return;
+    }
+
     const vscode = getVsCodeApi();
     if (vscode) {
       setInstallSession((s) => s + 1);
@@ -77,30 +89,30 @@ export default function SetupPage() {
   }, []);
 
   return (
-    <div className="w-[100%] flex flex-col items-space-between justify-space-between">
+    <div className="flex min-h-[100dvh] w-full max-w-[100vw] flex-col">
       <AnimatedBackground />
-      <div className="h-screen flex flex-col z-10 ">
+      <div className="z-10 flex min-h-[100dvh] flex-1 flex-col">
         <TursorHeader />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-row z-10 gap-10">
-          <div className="flex h-full min-h-0 min-w-0 w-[42%] flex-col overflow-hidden py-10 px-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-6 px-3 py-4 sm:gap-8 sm:px-5 sm:py-6 lg:flex-row lg:gap-10 lg:py-8">
+          <div className="flex min-h-[12rem] w-full min-w-0 flex-col overflow-hidden lg:min-h-0 lg:w-[42%] lg:shrink-0">
             <ScriptAnimatedViewer />
           </div>
-          <div className="flex h-full min-h-0 min-w-0 w-[58%] flex-col py-10 items-center overflow-y-auto">
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center overflow-y-auto lg:w-[58%] lg:min-w-0 lg:py-0">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="mb-8 p-8 w-[75%] max-w-3xl rounded-2xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-slate-700/50 backdrop-blur-xl shadow-2xl"
+              className="mb-6 w-full max-w-3xl rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-5 shadow-2xl backdrop-blur-xl sm:mb-8 sm:p-8"
             >
               <div className="flex items-start gap-4 mb-6">
                 <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                   <Zap className="w-6 h-6 text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-semibold text-white mb-2">
+                  <h2 className="mb-2 text-xl font-semibold text-white sm:text-2xl">
                     One-Click Setup
                   </h2>
-                  <p className="text-slate-400">
+                  <p className="text-sm text-slate-400 sm:text-base">
                     Automatically install and start the Tursor backend
                   </p>
                 </div>
@@ -112,7 +124,7 @@ export default function SetupPage() {
                 disabled={installRunning}
                 whileHover={{ scale: installRunning ? 1 : 1.02 }}
                 whileTap={{ scale: installRunning ? 1 : 0.98 }}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold text-lg shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-blue-500/50 disabled:cursor-not-allowed disabled:opacity-50 sm:py-4 sm:text-lg"
               >
                 {installRunning ? "Running setup…" : "Install & Start Tursor"}
               </motion.button>
