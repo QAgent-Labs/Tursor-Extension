@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef } from "react";
 import { Check, Loader2, Minus, X } from "lucide-react";
 import {
   getVisiblePhasesForStack,
@@ -8,27 +8,7 @@ import {
   type StepVisualState,
 } from "../types/installStatus";
 
-function stepLabel(
-  phase: InstallPhase,
-  status: StepVisualState,
-  checkInstallCliPresent: boolean | undefined,
-): string {
-  if (phase === "check_install") {
-    if (status === "pending") return "Tursor CLI check";
-    if (status === "running") return "Tursor CLI check…";
-    if (status === "success") {
-      if (checkInstallCliPresent === true) {
-        return "Tursor CLI check — already installed";
-      }
-      if (checkInstallCliPresent === false) {
-        return "Tursor CLI check — not found; installing next";
-      }
-      return "Tursor CLI check — complete";
-    }
-    if (status === "failure") return "Tursor CLI check — couldn’t verify";
-    if (status === "skipped") return "Tursor CLI check — skipped";
-  }
-
+function stepLabel(phase: InstallPhase, status: StepVisualState): string {
   if (phase === "clone_repo") {
     if (status === "pending") return "Backend repository";
     if (status === "running") return "Cloning or updating backend…";
@@ -155,12 +135,10 @@ function StepRow({
   phase,
   status,
   isActiveRow,
-  checkInstallCliPresent,
 }: {
   phase: InstallPhase;
   status: StepVisualState;
   isActiveRow: boolean;
-  checkInstallCliPresent: boolean | undefined;
 }) {
   return (
     <div
@@ -175,7 +153,7 @@ function StepRow({
       <span
         className={`min-w-0 flex-1 break-words text-left text-sm ${stepLabelClass(status)}`}
       >
-        {stepLabel(phase, status, checkInstallCliPresent)}
+        {stepLabel(phase, status)}
       </span>
     </div>
   );
@@ -183,19 +161,24 @@ function StepRow({
 
 export function InstallStatusSteps({
   steps,
-  checkInstallCliPresent,
 }: {
   steps: Record<InstallPhase, StepVisualState>;
-  /** Set from install script `check_install` payload `installed` when done. */
-  checkInstallCliPresent?: boolean;
 }) {
   const target = useMemo(() => getVisiblePhasesForStack(steps), [steps]);
-  const [revealedCount, setRevealedCount] = useState(1);
-  const handledConnectorRef = useRef<string | null>(null);
-
   const targetLen = target.length;
 
-  const safeRevealed = Math.min(revealedCount, Math.max(1, targetLen || 1));
+  const safeRevealed = useMemo(() => {
+    if (targetLen === 0) return 1;
+    let revealed = 1;
+    for (let i = 0; i < targetLen - 1; i++) {
+      const phase = target[i];
+      if (!phase || !isTerminalStepState(steps[phase])) {
+        break;
+      }
+      revealed = i + 2;
+    }
+    return Math.min(revealed, targetLen);
+  }, [target, steps, targetLen]);
 
   const displayed = useMemo(
     () => target.slice(0, safeRevealed),
@@ -205,15 +188,8 @@ export function InstallStatusSteps({
   const needsConnector = targetLen > safeRevealed;
 
   const onConnectorComplete = useCallback(() => {
-    const nextPhase = target[safeRevealed];
-    const id = `${safeRevealed}-${nextPhase ?? "end"}`;
-    if (handledConnectorRef.current === id) return;
-    handledConnectorRef.current = id;
-    setRevealedCount((r) => {
-      const cap = getVisiblePhasesForStack(steps).length;
-      return Math.min(r + 1, cap);
-    });
-  }, [safeRevealed, target, steps]);
+    /* Step reveal is driven by useEffect when a phase reaches a terminal state. */
+  }, []);
 
   const connectorInstanceKey = `${safeRevealed}-${target[safeRevealed] ?? ""}`;
 
@@ -236,7 +212,6 @@ export function InstallStatusSteps({
                 phase={phase}
                 status={status}
                 isActiveRow={isActiveRow}
-                checkInstallCliPresent={checkInstallCliPresent}
               />
             </div>
             {idx < displayed.length - 1 ? <PersistentDashLine /> : null}

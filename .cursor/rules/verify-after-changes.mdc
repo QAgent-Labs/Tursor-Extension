@@ -1,0 +1,34 @@
+---
+description: Run lint and type checks after every code change in Tursor-Extension
+alwaysApply: true
+---
+
+# Verify After Code Changes
+
+After **any** edit to this repo (webview `src/`, extension host `extension/`, scripts, or config), run checks and fix all reported issues before finishing.
+
+## Required commands
+
+From repo root (`Tursor-Extension/`):
+
+```bash
+npm run lint
+npm run build
+cd extension && npm run compile
+```
+
+All three must exit 0. Do not leave lint errors, TypeScript errors, or unused imports.
+
+## When editing
+
+1. Run `ReadLints` on files you changed when the IDE reports diagnostics.
+2. If a check fails, fix the root cause — do not disable rules unless the team explicitly accepts the pattern.
+3. Summarize verification in your reply (pass/fail and what was fixed).
+
+## Scope
+
+- Webview: `src/**/*.ts`, `src/**/*.tsx`
+- Extension host: `extension/src/**/*.ts`
+- Shared types and scripts that affect the build
+
+If you only changed markdown or docs, checks are optional unless types or imports were touched.

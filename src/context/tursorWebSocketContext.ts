@@ -14,8 +14,8 @@ export type TursorWsStatus =
 export type TursorWebSocketContextValue = {
   status: TursorWsStatus;
   lastError: string | null;
-  /** Start or reuse the global connection (idempotent while already connected). */
-  connect: () => void;
+  /** Start or reuse the global connection. Optional origin override avoids stale port state. */
+  connect: (originOverride?: string) => void;
   /** Close the global connection. */
   disconnect: () => void;
   /** Emits the `message` event to the server. */

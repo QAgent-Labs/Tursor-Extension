@@ -1,43 +1,191 @@
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatedBackground } from "../components/AnimatedBackground";
+import { DisabledReasonTooltip } from "../components/DisabledReasonTooltip";
 import { Wifi, Server, Laptop } from "lucide-react";
 import { useTursorWebSocket } from "../context/useTursorWebSocket";
+import { useTursorAppConfig } from "../context/useTursorAppConfig";
+import { useTursorStatusProbe } from "../hooks/useTursorStatusProbe";
+import { TursorConfigFields } from "../components/TursorConfigFields";
+import { configFieldsToPatch } from "../utils/tursorConfigPatch";
+import { useTursorConfigDraft } from "../hooks/useTursorConfigDraft";
+import { probeFrontendPort } from "../utils/probeFrontendPort";
+import { buildSessionConfig } from "../workspaceInit";
 
-const MIN_CONNECTING_ANIM_MS = 2000;
+function continueDisabledReason(
+  canContinue: boolean,
+  checkingFrontend: boolean,
+  probing: boolean,
+  waitingForSocket: boolean,
+  backendFailed: boolean,
+  frontendPortTrimmed: string,
+  probeError: string | null,
+  lastError: string | null,
+): string | null {
+  if (canContinue) return null;
+  if (checkingFrontend) {
+    return "Verifying your test frontend is reachable on that port…";
+  }
+  if (probing) {
+    return "Checking whether the Tursor backend is running…";
+  }
+  if (waitingForSocket) {
+    return "Connecting to the Tursor backend over WebSocket…";
+  }
+  if (backendFailed) {
+    return (
+      probeError ??
+      lastError ??
+      "Could not connect to the Tursor backend."
+    );
+  }
+  if (!frontendPortTrimmed) {
+    return "Enter the port your test frontend runs on (e.g. 5173).";
+  }
+  return "Waiting for backend connection before you can continue.";
+}
 
 export function ConnectingScreen() {
   const navigate = useNavigate();
-  const { status, connect, lastError } = useTursorWebSocket();
-  /** After mount, keep “connecting” visuals for at least this long even if the socket connects sooner. */
-  const [minHoldElapsed, setMinHoldElapsed] = useState(false);
+  const { status, connect, lastError, disconnect, send } = useTursorWebSocket();
+  const { config, setConfig, editorWorkspacePath, resolvedWorkspacePath, backendStatus } =
+    useTursorAppConfig();
+  const { probe } = useTursorStatusProbe();
+  const [probing, setProbing] = useState(true);
+  const [probeError, setProbeError] = useState<string | null>(null);
+  const [frontendPortError, setFrontendPortError] = useState<string | null>(
+    null,
+  );
+  const [checkingFrontend, setCheckingFrontend] = useState(false);
+  const connectGeneration = useRef(0);
+  const probeRef = useRef(probe);
+  const connectRef = useRef(connect);
+  const disconnectRef = useRef(disconnect);
+  probeRef.current = probe;
+  connectRef.current = connect;
+  disconnectRef.current = disconnect;
 
-  useEffect(() => {
-    connect();
-  }, [connect]);
+  const {
+    workspacePath,
+    backendPort,
+    frontendPort,
+    setWorkspacePath,
+    setBackendPort,
+    setFrontendPort,
+    resetDraft,
+  } = useTursorConfigDraft(resolvedWorkspacePath, config);
 
-  useEffect(() => {
-    const t = window.setTimeout(
-      () => setMinHoldElapsed(true),
-      MIN_CONNECTING_ANIM_MS,
-    );
-    return () => clearTimeout(t);
+  const runConnectFlow = useCallback(async () => {
+    const gen = ++connectGeneration.current;
+    setProbing(true);
+    setProbeError(null);
+    disconnectRef.current();
+
+    const result = await probeRef.current();
+    if (gen !== connectGeneration.current) return;
+
+    setProbing(false);
+    if (!result.running || !result.port) {
+      setProbeError(
+        "Tursor backend is not running. Start it with `tursor start` and try again.",
+      );
+      return;
+    }
+
+    connectRef.current(`http://127.0.0.1:${result.port}`);
   }, []);
 
   useEffect(() => {
-    if (status !== "connected" || !minHoldElapsed) return;
-    const t = window.setTimeout(() => navigate("/run"), 450);
-    return () => clearTimeout(t);
-  }, [status, minHoldElapsed, navigate]);
+    void runConnectFlow();
+    return () => {
+      connectGeneration.current += 1;
+    };
+  }, [runConnectFlow]);
 
   const waitingForSocket =
+    probing ||
     status === "idle" ||
     status === "connecting" ||
-    status === "disconnected" ||
-    (status === "connected" && !minHoldElapsed);
+    status === "disconnected";
 
-  const failed = status === "error";
+  const backendFailed =
+    !probing && (status === "error" || Boolean(probeError));
+
+  const discoveredBackendPort =
+    backendStatus?.port != null ? String(backendStatus.port) : backendPort;
+
+  const frontendPortTrimmed = frontendPort.trim();
+  const canContinue =
+    status === "connected" &&
+    !probing &&
+    !backendFailed &&
+    frontendPortTrimmed.length > 0 &&
+    !checkingFrontend;
+
+  const continueDisabledReasonText = continueDisabledReason(
+    canContinue,
+    checkingFrontend,
+    probing,
+    waitingForSocket,
+    backendFailed,
+    frontendPortTrimmed,
+    probeError,
+    lastError,
+  );
+
+  const applyConfigAndReconnect = () => {
+    setConfig(
+      configFieldsToPatch(
+        workspacePath,
+        editorWorkspacePath,
+        discoveredBackendPort,
+        frontendPort,
+      ),
+    );
+    resetDraft();
+    setProbeError(null);
+    setFrontendPortError(null);
+  };
+
+  const handleContinue = async () => {
+    const port = Number.parseInt(frontendPortTrimmed, 10);
+    if (!Number.isFinite(port) || port <= 0) {
+      setFrontendPortError("Enter a valid port number.");
+      return;
+    }
+
+    setCheckingFrontend(true);
+    setFrontendPortError(null);
+    const alive = await probeFrontendPort(port);
+    setCheckingFrontend(false);
+
+    if (!alive) {
+      setFrontendPortError(
+        `Nothing responded on http://127.0.0.1:${port}. Start your test frontend and try again.`,
+      );
+      return;
+    }
+
+    setConfig(
+      configFieldsToPatch(
+        workspacePath,
+        editorWorkspacePath,
+        discoveredBackendPort,
+        frontendPort,
+      ),
+    );
+    resetDraft();
+
+    send(
+      buildSessionConfig({
+        workspacePath: resolvedWorkspacePath ?? workspacePath,
+        frontendPort: port,
+      }),
+    );
+
+    navigate("/run");
+  };
 
   return (
     <div className="relative flex min-h-[100dvh] w-full max-w-[100vw] items-center justify-center overflow-x-hidden overflow-y-auto bg-slate-950">
@@ -79,72 +227,24 @@ export function ConnectingScreen() {
                   }}
                   className="absolute inset-0 origin-left rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500"
                 />
-                {waitingForSocket ? (
-                  <motion.div
-                    aria-hidden
-                    className="absolute inset-y-0 w-1/3 rounded-full bg-white/35 blur-[1px]"
-                    animate={{ left: ["-35%", "100%"] }}
-                    transition={{
-                      duration: 1.25,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                  />
-                ) : null}
               </div>
             </div>
 
-            <motion.div
-              className="relative z-10"
-              animate={
-                waitingForSocket
-                  ? { scale: [1, 1.08, 1] }
-                  : failed
-                    ? { scale: 1 }
-                    : { scale: [1, 1.06, 1] }
-              }
-              transition={
-                waitingForSocket
-                  ? {
-                      scale: {
-                        duration: 1.2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      },
-                    }
-                  : failed
-                    ? { duration: 0.3 }
-                    : {
-                        scale: {
-                          duration: 0.45,
-                          repeat: 2,
-                          ease: "easeInOut",
-                        },
-                      }
-              }
-            >
+            <motion.div className="relative z-10">
               <div
                 className={
-                  failed
-                    ? "p-3 rounded-xl bg-red-500/20 border border-red-500/50 backdrop-blur-sm"
-                    : "p-3 rounded-xl bg-blue-500/20 border border-blue-500/50 backdrop-blur-sm"
+                  backendFailed
+                    ? "rounded-xl border border-red-500/50 bg-red-500/20 p-3 backdrop-blur-sm"
+                    : "rounded-xl border border-blue-500/50 bg-blue-500/20 p-3 backdrop-blur-sm"
                 }
               >
                 <Wifi
                   className={
-                    failed
-                      ? "w-6 h-6 text-red-400"
+                    backendFailed
+                      ? "h-6 w-6 text-red-400"
                       : waitingForSocket
-                        ? "w-6 h-6 text-blue-400"
-                        : "w-6 h-6 text-emerald-400"
-                  }
-                  style={
-                    waitingForSocket
-                      ? {
-                          animation:
-                            "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                        }
-                      : undefined
+                        ? "h-6 w-6 text-blue-400"
+                        : "h-6 w-6 text-emerald-400"
                   }
                 />
               </div>
@@ -175,19 +275,64 @@ export function ConnectingScreen() {
           transition={{ delay: 0.4 }}
         >
           <h2 className="mb-3 text-2xl font-bold text-white sm:text-3xl">
-            {failed ? "Connection failed" : "Establishing Connection"}
+            {backendFailed ? "Connection failed" : "Establishing Connection"}
           </h2>
           <p className="mx-auto max-w-lg text-sm text-slate-400 sm:text-base">
-            {failed
-              ? (lastError ??
+            {backendFailed
+              ? (probeError ??
+                lastError ??
                 "Could not reach the Tursor backend over WebSocket.")
-              : waitingForSocket
-                ? "Connecting to QAgent backend…"
-                : "Connected."}
+              : probing
+                ? "Checking Tursor backend status…"
+                : waitingForSocket
+                  ? "Connecting to Tursor backend…"
+                  : "Backend connected. Enter your test frontend port to continue."}
           </p>
+
+          <div className="mx-auto mt-5 max-w-md rounded-xl border border-slate-800/80 bg-slate-900/50 px-4 py-4 text-left">
+            <TursorConfigFields
+              workspacePath={workspacePath}
+              backendPort={discoveredBackendPort}
+              frontendPort={frontendPort}
+              showFrontendPort
+              backendPortReadOnly
+              onWorkspacePathChange={setWorkspacePath}
+              onBackendPortChange={setBackendPort}
+              onFrontendPortChange={setFrontendPort}
+            />
+            {frontendPortError ? (
+              <p className="mt-3 text-xs text-red-400">{frontendPortError}</p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                applyConfigAndReconnect();
+                void runConnectFlow();
+              }}
+              className="mt-4 w-full rounded-lg border border-slate-600 bg-slate-800/80 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
+            >
+              Apply backend settings & reconnect
+            </button>
+            <DisabledReasonTooltip
+              disabled={!canContinue}
+              reason={continueDisabledReasonText}
+              className="mt-3 w-full"
+            >
+              <button
+                type="button"
+                disabled={!canContinue}
+                onClick={() => void handleContinue()}
+                className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {checkingFrontend
+                  ? "Checking frontend port…"
+                  : "Continue to Tursor"}
+              </button>
+            </DisabledReasonTooltip>
+          </div>
         </motion.div>
 
-        {failed ? (
+        {backendFailed ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -195,72 +340,16 @@ export function ConnectingScreen() {
           >
             <button
               type="button"
-              onClick={() => connect()}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
+              onClick={() => {
+                applyConfigAndReconnect();
+                void runConnectFlow();
+              }}
+              className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40"
             >
               Retry connection
             </button>
           </motion.div>
-        ) : (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: waitingForSocket ? 1 : 0.5 }}
-              transition={{ delay: 0.6 }}
-              className="flex items-center justify-center gap-2 mt-8"
-            >
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 rounded-full bg-blue-400"
-                  animate={
-                    waitingForSocket
-                      ? {
-                          scale: [1, 1.5, 1],
-                          opacity: [0.5, 1, 0.5],
-                        }
-                      : {}
-                  }
-                  transition={
-                    waitingForSocket
-                      ? {
-                          duration: 1.2,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                        }
-                      : { duration: 0.3 }
-                  }
-                />
-              ))}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="mt-10 max-w-md mx-auto h-1 rounded-full bg-slate-800 overflow-hidden"
-            >
-              {waitingForSocket ? (
-                <motion.div
-                  className="h-full w-1/3 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500"
-                  animate={{ x: ["-100%", "300%"] }}
-                  transition={{
-                    duration: 1.2,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                />
-              ) : (
-                <motion.div
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500"
-                />
-              )}
-            </motion.div>
-          </>
-        )}
+        ) : null}
       </div>
     </div>
   );

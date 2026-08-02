@@ -9,6 +9,7 @@ export const env = {
   tursorSocketUrl: s("VITE_TURSOR_SOCKET_URL"),
   tursorSocketPath: s("VITE_TURSOR_SOCKET_PATH"),
   runpageEmbedUrl: s("VITE_RUNPAGE_EMBED_URL"),
+  workspacePath: s("VITE_WORKSPACE_PATH"),
   showRuntimeDevBadge: s("VITE_SHOW_RUNTIME_DEV_BADGE") === "true",
 } as const;
 

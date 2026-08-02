@@ -14,22 +14,6 @@ function delay(ms: number): Promise<void> {
 export async function runBrowserMockInstall(): Promise<void> {
   const step = 380;
 
-  post({
-    type: "tursorInstallStatus",
-    payload: { phase: "check_install", state: "start" },
-  });
-  await delay(step);
-  post({
-    type: "tursorInstallStatus",
-    payload: {
-      phase: "check_install",
-      state: "done",
-      ok: true,
-      installed: false,
-    },
-  });
-  await delay(step);
-
   for (const phase of [
     "clone_repo",
     "build",
@@ -40,10 +24,15 @@ export async function runBrowserMockInstall(): Promise<void> {
     await delay(step);
     post({
       type: "tursorInstallStatus",
-      payload: { phase, state: "done", ok: true },
+      payload: { phase, state: "done", ok: true, port: 9090 },
     });
     await delay(step);
   }
 
   post({ type: "tursorInstallFinished", code: 0 });
+  post({
+    type: "tursorBackendResolved",
+    port: 9090,
+    origin: "http://127.0.0.1:9090",
+  });
 }

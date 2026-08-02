@@ -1,9 +1,8 @@
 import { env } from "./env";
 
 /**
- * Where the UI is hosted:
- * - `extension`: VS Code / Cursor webview (real `acquireVsCodeApi`, host Socket.IO bridge, install script).
- * - `browser`: Vite dev or static preview — mocks install; Socket.IO runs in-page.
+ * Where the UI is hosted — used only for the install mock (browser) vs real script (extension)
+ * and the optional dev runtime badge. All other features use the same code paths.
  *
  * Toggle with **`VITE_APP_RUNTIME`** in `.env`: `browser` | `extension`.
  * If unset, **auto**: `extension` when `acquireVsCodeApi` exists, otherwise `browser`.

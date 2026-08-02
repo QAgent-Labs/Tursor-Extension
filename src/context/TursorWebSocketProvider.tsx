@@ -12,19 +12,19 @@ import {
   type TursorWsStatus,
 } from "./tursorWebSocketContext";
 import { io, type Socket } from "socket.io-client";
-import { env } from "../env";
 import { getVsCodeApi } from "../vscodeApi";
 import {
   setHostSocketBridgeHandler,
   type TursorSocketHostToWebview,
 } from "../vscodeHostSocketBridge";
+import { emitWorkspaceInit } from "../workspaceInit";
+import { useTursorAppConfig } from "./useTursorAppConfig";
+import { TURSOR_SOCKET_PATH } from "../constants/tursorConnection";
 
 type Listener = (data: unknown) => void;
 
-/** Polling first: extension host (Node) tolerates this; webview uses host bridge instead of browser XHR. */
-const TRANSPORTS = ["polling", "websocket"] as const;
+const TRANSPORTS = ["websocket"] as const;
 
-/** In extension webviews, `localhost` may resolve to ::1 while the dev server binds IPv4 only. */
 function preferIpv4Loopback(url: string): string {
   try {
     const u = new URL(url);
@@ -38,15 +38,8 @@ function preferIpv4Loopback(url: string): string {
   return url;
 }
 
-function resolveSocketUrl(): string {
-  const raw = env.tursorSocketUrl;
-  if (!raw) return "";
-  return preferIpv4Loopback(raw);
-}
-
 function resolveSocketPath(): string {
-  const p = env.tursorSocketPath;
-  return p ?? "";
+  return TURSOR_SOCKET_PATH;
 }
 
 function disposeSocket(socket: Socket) {
@@ -55,6 +48,7 @@ function disposeSocket(socket: Socket) {
 }
 
 export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
+  const { config, backendOrigin, resolvedWorkspacePath } = useTursorAppConfig();
   const [status, setStatus] = useState<TursorWsStatus>("idle");
   const [lastError, setLastError] = useState<string | null>(null);
   const listenersRef = useRef(new Set<Listener>());
@@ -63,12 +57,54 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
 
   const vscode = getVsCodeApi();
 
+  const resolveSocketUrl = useCallback((): string => {
+    if (backendOrigin) {
+      return preferIpv4Loopback(backendOrigin);
+    }
+    return "";
+  }, [backendOrigin]);
+
+  const send = useCallback(
+    (payload: unknown) => {
+      if (vscode) {
+        vscode.postMessage({
+          type: "tursorSocket",
+          action: "emit",
+          event: "message",
+          payload,
+        });
+        return;
+      }
+      socketRef.current?.emit("message", payload);
+    },
+    [vscode],
+  );
+
+  const sendWorkspaceInit = useCallback(
+    (workspacePathOverride?: string | null) => {
+      emitWorkspaceInit(send, {
+        workspacePath:
+          workspacePathOverride ??
+          config.workspacePath ??
+          resolvedWorkspacePath,
+        frontendPort: config.frontendPort,
+      });
+    },
+    [send, config.workspacePath, config.frontendPort, resolvedWorkspacePath],
+  );
+
   const handleHostSocket = useCallback(
     (data: TursorSocketHostToWebview) => {
       if (data.event === "connected") {
         bridgeConnectedRef.current = true;
         setStatus("connected");
         setLastError(null);
+        sendWorkspaceInit(data.workspacePath);
+        return;
+      }
+
+      if (data.event === "workspaceContext") {
+        sendWorkspaceInit(data.workspacePath);
         return;
       }
 
@@ -99,7 +135,7 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [],
+    [sendWorkspaceInit],
   );
 
   useLayoutEffect(() => {
@@ -129,89 +165,77 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
     setStatus("disconnected");
   }, [vscode]);
 
-  const connect = useCallback(() => {
-    const url = resolveSocketUrl();
-    const path = resolveSocketPath();
-    setLastError(null);
+  const connect = useCallback(
+    (originOverride?: string) => {
+      const url = originOverride
+        ? preferIpv4Loopback(originOverride)
+        : resolveSocketUrl();
+      const path = resolveSocketPath();
+      setLastError(null);
 
-    if (!url) {
-      setLastError("Set VITE_TURSOR_SOCKET_URL in the project root .env (see .env.example).");
-      setStatus("error");
-      return;
-    }
-
-    setStatus("connecting");
-
-    if (vscode) {
-      if (bridgeConnectedRef.current) {
+      if (!url) {
+        setLastError("Set the backend port in Settings before connecting.");
+        setStatus("error");
         return;
       }
-      vscode.postMessage({
-        type: "tursorSocket",
-        action: "connect",
-        url,
-        path,
-        transports: [...TRANSPORTS],
-      });
-      return;
-    }
 
-    if (socketRef.current?.connected) {
-      return;
-    }
+      setStatus("connecting");
 
-    const stale = socketRef.current;
-    if (stale) {
-      disposeSocket(stale);
-      socketRef.current = null;
-    }
-
-    const socket = io(url, {
-      path,
-      transports: [...TRANSPORTS],
-    });
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      setStatus("connected");
-      setLastError(null);
-    });
-
-    socket.on("disconnect", () => {
-      setStatus("disconnected");
-    });
-
-    socket.on("connect_error", (err: unknown) => {
-      setLastError(err instanceof Error ? err.message : String(err));
-      setStatus("error");
-    });
-
-    socket.on("message", (data: unknown) => {
-      listenersRef.current.forEach((fn) => {
-        try {
-          fn(data);
-        } catch {
-          /* listener isolation */
-        }
-      });
-    });
-  }, [vscode]);
-
-  const send = useCallback(
-    (payload: unknown) => {
       if (vscode) {
+        bridgeConnectedRef.current = false;
         vscode.postMessage({
           type: "tursorSocket",
-          action: "emit",
-          event: "message",
-          payload,
+          action: "disconnect",
+        });
+        vscode.postMessage({
+          type: "tursorSocket",
+          action: "connect",
+          url,
+          path,
+          transports: [...TRANSPORTS],
         });
         return;
       }
-      socketRef.current?.emit("message", payload);
+
+      const stale = socketRef.current;
+      if (stale) {
+        disposeSocket(stale);
+        socketRef.current = null;
+      }
+
+      const socket = io(url, {
+        path,
+        transports: [...TRANSPORTS],
+      });
+
+      socketRef.current = socket;
+
+      socket.on("connect", () => {
+        setStatus("connected");
+        setLastError(null);
+        sendWorkspaceInit();
+      });
+
+      socket.on("disconnect", () => {
+        setStatus("disconnected");
+      });
+
+      socket.on("connect_error", (err: unknown) => {
+        setLastError(err instanceof Error ? err.message : String(err));
+        setStatus("error");
+      });
+
+      socket.on("message", (data: unknown) => {
+        listenersRef.current.forEach((fn) => {
+          try {
+            fn(data);
+          } catch {
+            /* listener isolation */
+          }
+        });
+      });
     },
-    [vscode],
+    [vscode, resolveSocketUrl, sendWorkspaceInit],
   );
 
   const subscribe = useCallback((listener: Listener) => {

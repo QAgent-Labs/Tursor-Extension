@@ -1,6 +1,11 @@
 import type { Webview } from "vscode";
 import { io, type Socket } from "socket.io-client";
 
+export type WorkspaceInitPayload = {
+  type: "workspace_init";
+  workspacePath: string;
+};
+
 function isAllowedSocketUrl(url: string): boolean {
   try {
     const u = new URL(url);
@@ -21,16 +26,58 @@ function post(
   void webview.postMessage({ type: "tursorSocket", ...body });
 }
 
+function postConnected(
+  webview: Webview,
+  socket: Socket,
+  workspacePath: string | null,
+): void {
+  post(webview, {
+    event: "connected",
+    socketId: socket.id ?? null,
+    transport: socket.io?.engine?.transport?.name ?? null,
+    workspacePath,
+  });
+}
+
 /**
  * Runs Socket.IO in the extension host (Node) so the webview avoids XHR/CORS
  * to vscode-resource / file origins.
  */
-export function createTursorSocketHostBridge(webview: Webview): {
+export function createTursorSocketHostBridge(
+  webview: Webview,
+  options: {
+    getWorkspaceInit: () => WorkspaceInitPayload | null;
+  },
+): {
   dispose: () => void;
-  /** Returns true if the message was consumed (tursorSocket). */
   handleWebviewMessage(message: unknown): boolean;
+  emitWorkspaceInit: () => void;
+  syncSocketState: () => void;
 } {
   let socket: Socket | null = null;
+  let connectedUrl: string | null = null;
+  let connectedPath: string | null = null;
+
+  const emitWorkspaceInit = () => {
+    const payload = options.getWorkspaceInit();
+    if (!payload) {
+      console.warn("[Tursor socket] workspace_init skipped — missing workspace");
+      return;
+    }
+    post(webview, {
+      event: "workspaceContext",
+      workspacePath: payload.workspacePath,
+    });
+  };
+
+  const syncSocketState = () => {
+    if (socket?.connected) {
+      const init = options.getWorkspaceInit();
+      postConnected(webview, socket, init?.workspacePath ?? null);
+      return;
+    }
+    post(webview, { event: "disconnected", reason: "sync" });
+  };
 
   const disposeSocket = () => {
     if (socket) {
@@ -38,6 +85,8 @@ export function createTursorSocketHostBridge(webview: Webview): {
       socket.disconnect();
       socket = null;
     }
+    connectedUrl = null;
+    connectedPath = null;
   };
 
   const dispose = () => {
@@ -51,6 +100,11 @@ export function createTursorSocketHostBridge(webview: Webview): {
     const m = message as Record<string, unknown>;
     if (m.type !== "tursorSocket" || typeof m.action !== "string") {
       return false;
+    }
+
+    if (m.action === "sync") {
+      syncSocketState();
+      return true;
     }
 
     if (m.action === "connect") {
@@ -71,13 +125,25 @@ export function createTursorSocketHostBridge(webview: Webview): {
         return true;
       }
 
+      if (
+        socket?.connected &&
+        connectedUrl === url &&
+        connectedPath === path
+      ) {
+        const init = options.getWorkspaceInit();
+        postConnected(webview, socket, init?.workspacePath ?? null);
+        return true;
+      }
+
       disposeSocket();
+      connectedUrl = url;
+      connectedPath = path;
 
       const transports = Array.isArray(m.transports)
         ? (m.transports as unknown[]).filter((t): t is string => typeof t === "string")
         : [];
       const t: string[] =
-        transports.length > 0 ? [...transports] : ["polling", "websocket"];
+        transports.length > 0 ? [...transports] : ["websocket"];
 
       socket = io(url, {
         path,
@@ -85,11 +151,8 @@ export function createTursorSocketHostBridge(webview: Webview): {
       });
 
       socket.on("connect", () => {
-        post(webview, {
-          event: "connected",
-          socketId: socket?.id ?? null,
-          transport: socket?.io?.engine?.transport?.name ?? null,
-        });
+        const init = options.getWorkspaceInit();
+        postConnected(webview, socket!, init?.workspacePath ?? null);
       });
 
       socket.on("disconnect", (reason: string) => {
@@ -141,5 +204,5 @@ export function createTursorSocketHostBridge(webview: Webview): {
     return true;
   };
 
-  return { dispose, handleWebviewMessage };
+  return { dispose, handleWebviewMessage, emitWorkspaceInit, syncSocketState };
 }
