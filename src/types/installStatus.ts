@@ -1,5 +1,4 @@
 export type InstallPhase =
-  | "check_install"
   | "clone_repo"
   | "build"
   | "cli_install"
@@ -7,7 +6,6 @@ export type InstallPhase =
 
 /** Single source of truth for step order (UI stack + install script phases). */
 export const INSTALL_STEP_ORDER: readonly InstallPhase[] = [
-  "check_install",
   "clone_repo",
   "build",
   "cli_install",
@@ -23,7 +21,6 @@ export type StepVisualState =
 
 export function createInitialStepMap(): Record<InstallPhase, StepVisualState> {
   return {
-    check_install: "pending",
     clone_repo: "pending",
     build: "pending",
     cli_install: "pending",
@@ -62,6 +59,8 @@ export type InstallStatusPayload = {
   installed?: boolean;
   message?: string;
   detail?: string;
+  /** Backend HTTP port from `tursor port` after ensure_running */
+  port?: number;
 };
 
 export function applyInstallStatusPayload(
@@ -81,4 +80,10 @@ export function applyInstallStatusPayload(
 
 export type InstallHostToWebviewMessage =
   | { type: "tursorInstallStatus"; payload: InstallStatusPayload }
-  | { type: "tursorInstallFinished"; code: number | null };
+  | { type: "tursorInstallFinished"; code: number | null }
+  | { type: "tursorStartFinished"; code: number | null }
+  | {
+      type: "tursorBackendResolved";
+      port: number;
+      origin: string | null;
+    };

@@ -3,6 +3,8 @@ import { ensureHostSocketBridgeTap } from "./vscodeHostSocketBridge";
 /**
  * VS Code / Cursor injects `acquireVsCodeApi` into the webview once.
  * Use postMessage / onDidReceiveMessage in extension.ts to talk to Node (run shell, files, etc.).
+ *
+ * When not in a webview (e.g. Vite dev), returns `null` and Socket.IO runs in-page.
  */
 export interface VsCodeApi {
   postMessage(data: unknown): void;

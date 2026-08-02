@@ -10,6 +10,12 @@ export type TursorSocketHostToWebview =
       event: "connected";
       socketId?: string | null;
       transport?: string | null;
+      workspacePath?: string | null;
+    }
+  | {
+      type: "tursorSocket";
+      event: "workspaceContext";
+      workspacePath: string;
     }
   | {
       type: "tursorSocket";
