@@ -1,9 +1,6 @@
 import { HomeIcon } from "lucide-react";
 import { TursorLogo } from "./TursorLogo";
-import {
-  tursorWordmarkGradientClassName,
-  tursorWordmarkTextGradientClassName,
-} from "./tursorWordmarkClasses";
+import { tursorWordmarkGradientClassName } from "./tursorWordmarkClasses";
 import { useNavigate } from "react-router-dom";
 
 export default function TursorHeader({
@@ -13,13 +10,13 @@ export default function TursorHeader({
 }) {
   const navigate = useNavigate();
   return (
-    <div className="flex min-h-[5rem] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-gray-700 px-3 py-4 sm:mb-5 sm:min-h-[5.25rem] sm:px-5 sm:py-5">
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+    <div className="flex min-h-[5rem] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-gray-700 px-3 sm:mb-5 sm:min-h-[5.25rem] sm:px-5">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <div className="relative shrink-0">
-          <TursorLogo className="h-8 w-8 object-contain sm:h-10 sm:w-10" />
+          <TursorLogo className="h-15 w-15 object-contain" />
         </div>
         <h1
-          className={`min-w-0 truncate text-2xl font-bold sm:text-4xl ${tursorWordmarkTextGradientClassName}`}
+          className={`min-w-0 truncate text-2xl font-bold sm:text-4xl text-white`}
         >
           Tursor
         </h1>

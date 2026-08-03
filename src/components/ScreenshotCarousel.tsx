@@ -1,38 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
+import { tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
 
-type Props = {
+type InnerProps = {
   urls: string[];
-  sessionKey?: string | null;
 };
 
-export function ScreenshotCarousel({ urls, sessionKey }: Props) {
+function ScreenshotCarouselInner({ urls }: InnerProps) {
   const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    setIndex(0);
-  }, [sessionKey]);
-
-  useEffect(() => {
-    setIndex((i) => Math.min(i, Math.max(0, urls.length - 1)));
-  }, [urls.length]);
-
-  if (urls.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/40 px-6 text-center">
-        <ImageOff className="h-10 w-10 text-slate-600" />
-        <p className="text-sm text-slate-500">Screenshots will appear here</p>
-        <p className="max-w-xs text-xs text-slate-600">
-          When the agent captures steps, they show in this carousel.
-        </p>
-      </div>
-    );
-  }
-
-  const safeIndex = Math.min(index, urls.length - 1);
-  const url = urls[safeIndex];
+  const safeIndex = Math.min(index, Math.max(0, urls.length - 1));
+  const url = urls[safeIndex]!;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
@@ -61,7 +40,7 @@ export function ScreenshotCarousel({ urls, sessionKey }: Props) {
               type="button"
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
               disabled={safeIndex === 0}
-              className="rounded-lg border border-slate-700/80 bg-slate-900/90 p-2 text-slate-300 disabled:opacity-40"
+              className={`${tursorSecondaryIconButtonClassName} disabled:opacity-40`}
               aria-label="Previous screenshot"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -84,7 +63,7 @@ export function ScreenshotCarousel({ urls, sessionKey }: Props) {
                 setIndex((i) => Math.min(urls.length - 1, i + 1))
               }
               disabled={safeIndex >= urls.length - 1}
-              className="rounded-lg border border-slate-700/80 bg-slate-900/90 p-2 text-slate-300 disabled:opacity-40"
+              className={`${tursorSecondaryIconButtonClassName} disabled:opacity-40`}
               aria-label="Next screenshot"
             >
               <ChevronRight className="h-4 w-4" />
@@ -93,5 +72,28 @@ export function ScreenshotCarousel({ urls, sessionKey }: Props) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+type Props = {
+  urls: string[];
+  sessionKey?: string | null;
+};
+
+export function ScreenshotCarousel({ urls, sessionKey }: Props) {
+  if (urls.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/40 px-6 text-center">
+        <ImageOff className="h-10 w-10 text-slate-600" />
+        <p className="text-sm text-slate-500">Screenshots will appear here</p>
+        <p className="max-w-xs text-xs text-slate-600">
+          When the agent captures steps, they show in this carousel.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <ScreenshotCarouselInner key={sessionKey ?? "default"} urls={urls} />
   );
 }

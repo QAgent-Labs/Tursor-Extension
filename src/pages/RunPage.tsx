@@ -5,6 +5,10 @@ import { Loader2, Play, RotateCw, Settings } from "lucide-react";
 import { RunSettingsSheet } from "../components/RunSettingsSheet";
 import { RunChatPanel } from "../components/RunChatPanel";
 import { RunRightPanel } from "../components/RunRightPanel";
+import {
+  tursorPrimaryButtonClassName,
+  tursorSecondaryIconButtonClassName,
+} from "../components/tursorButtonClasses";
 import { useRunContextFlow } from "../hooks/useRunContextFlow";
 import { useRunLogs } from "../hooks/useRunLogs";
 import { useRunSessions } from "../hooks/useRunSessions";
@@ -140,7 +144,7 @@ export default function RunPage() {
                 type="button"
                 onClick={handlePrimaryRun}
                 disabled={runDisabled}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-600/90 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className={tursorPrimaryButtonClassName}
               >
                 {isRunning ? (
                   <>
@@ -163,7 +167,7 @@ export default function RunPage() {
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/95 text-slate-200 shadow-xl shadow-black/40 backdrop-blur-md hover:bg-slate-800"
+              className={tursorSecondaryIconButtonClassName}
               aria-label="Open settings"
             >
               <Settings className="h-4 w-4" />

@@ -105,11 +105,13 @@ function probeViaExtensionHost(
 export function useTursorStatusProbe() {
   const { config, setBackendStatus, setConfig } = useTursorAppConfig();
 
-  const probe = useCallback(async (): Promise<TursorBackendStatus> => {
+  const probe = useCallback(async (hintPort?: number): Promise<TursorBackendStatus> => {
     const hint =
-      config.backendPort && config.backendPort > 0
-        ? config.backendPort
-        : DEFAULT_BACKEND_PORT;
+      hintPort && hintPort > 0
+        ? hintPort
+        : config.backendPort && config.backendPort > 0
+          ? config.backendPort
+          : DEFAULT_BACKEND_PORT;
     const status = await probeViaExtensionHost(hint);
     setBackendStatus(status);
     if (status.running && status.port) {

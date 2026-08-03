@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
 import { AnimatedBackground } from "../components/AnimatedBackground";
 import TursorHeader from "../components/TursorHeader";
+import { tursorPrimaryButtonClassName } from "../components/tursorButtonClasses";
 
 export default function ErrorPage() {
   return (
@@ -26,7 +27,7 @@ export default function ErrorPage() {
           </p>
           <Link
             to="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:shadow-blue-500/40 sm:px-8 sm:py-3.5 sm:text-base"
+            className={tursorPrimaryButtonClassName}
           >
             <Home className="h-5 w-5" aria-hidden />
             Back to home

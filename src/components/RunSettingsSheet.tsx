@@ -11,6 +11,7 @@ import {
   backendConnectionStatusLabel,
   frontendUrlFromPort,
 } from "../utils/connectionStatusLabel";
+import { tursorPrimaryButtonFullWidthClassName } from "./tursorButtonClasses";
 
 type Props = {
   open: boolean;
@@ -62,7 +63,7 @@ function SettingsFormBody({
     resetDraft();
     disconnect();
     onClose();
-    navigate("/connect");
+    navigate("/initial-setup?step=connect");
   };
 
   return (
@@ -93,7 +94,7 @@ function SettingsFormBody({
         <button
           type="button"
           onClick={save}
-          className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20"
+          className={tursorPrimaryButtonFullWidthClassName}
         >
           Save & reconnect
         </button>

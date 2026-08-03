@@ -12,6 +12,7 @@ import { TursorLogo } from "./TursorLogo";
 import { tursorWordmarkTextGradientClassName } from "./tursorWordmarkClasses";
 import { RunSessionHistoryList } from "./RunSessionHistoryList";
 import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
+import { tursorPrimaryIconButtonClassName, tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
 import { useTursorWebSocket } from "../context/useTursorWebSocket";
 import type { ChatMessage } from "../types/runChat";
 import { parseServerChatEvent } from "../types/runChat";
@@ -168,10 +169,10 @@ export function RunChatPanel({
               setPanelView("history");
             }
           }}
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+          className={`${tursorSecondaryIconButtonClassName} ${
             panelView === "history"
-              ? "border-cyan-500/50 bg-cyan-950/50 text-cyan-300"
-              : "border-slate-700/80 bg-slate-900/80 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              ? "border-cyan-500/50 text-cyan-300"
+              : "text-slate-400"
           }`}
           aria-label={
             panelView === "history" ? "Back to chat" : "View test run history"
@@ -266,7 +267,7 @@ export function RunChatPanel({
                   type="button"
                   onClick={sendMessage}
                   disabled={!connected || !draft.trim()}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-600 text-white shadow shadow-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className={tursorPrimaryIconButtonClassName}
                   aria-label="Send message"
                 >
                   <Send className="h-4 w-4" />

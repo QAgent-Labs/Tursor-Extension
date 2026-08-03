@@ -9,7 +9,7 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Simulates extension → webview install messages so SetupPage works in the browser.
+ * Simulates extension → webview install messages so InitialSetupPage works in the browser.
  */
 export async function runBrowserMockInstall(): Promise<void> {
   const step = 380;

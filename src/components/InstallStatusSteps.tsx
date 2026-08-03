@@ -7,41 +7,10 @@ import {
   type InstallPhase,
   type StepVisualState,
 } from "../types/installStatus";
+import { installStepLabel } from "../utils/installStepLabels";
 
 function stepLabel(phase: InstallPhase, status: StepVisualState): string {
-  if (phase === "clone_repo") {
-    if (status === "pending") return "Backend repository";
-    if (status === "running") return "Cloning or updating backend…";
-    if (status === "success") return "Backend repository — ready";
-    if (status === "failure") return "Backend repository — update failed";
-    if (status === "skipped") return "Backend repository — skipped";
-  }
-
-  if (phase === "build") {
-    if (status === "pending") return "Build backend";
-    if (status === "running") return "Installing dependencies and compiling…";
-    if (status === "success") return "Build — finished";
-    if (status === "failure") return "Build — failed";
-    if (status === "skipped") return "Build — skipped";
-  }
-
-  if (phase === "cli_install") {
-    if (status === "pending") return "Tursor CLI on PATH";
-    if (status === "running") return "Installing global `tursor` command…";
-    if (status === "success") return "Tursor CLI — installed";
-    if (status === "failure") return "Tursor CLI — install failed";
-    if (status === "skipped") return "Tursor CLI — skipped";
-  }
-
-  if (phase === "ensure_running") {
-    if (status === "pending") return "Backend service";
-    if (status === "running") return "Starting backend…";
-    if (status === "success") return "Backend service — running";
-    if (status === "failure") return "Backend service — failed to start";
-    if (status === "skipped") return "Backend service — skipped";
-  }
-
-  return phase;
+  return installStepLabel(phase, status);
 }
 
 const DASH_STAGGER_SEC = 0.14;

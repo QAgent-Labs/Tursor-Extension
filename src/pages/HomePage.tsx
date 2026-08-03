@@ -1,91 +1,97 @@
 import { AnimatedBackground } from "../components/AnimatedBackground";
+import { WelcomeFeatures } from "../components/home/WelcomeFeatures";
 import { TursorLogo } from "../components/TursorLogo";
-import { tursorWordmarkTextGradientClassName } from "../components/tursorWordmarkClasses";
+import { tursorPrimaryButtonClassName } from "../components/tursorButtonClasses";
 import { motion } from "motion/react";
+import { Rocket } from "lucide-react";
 import { useNavigate } from "react-router";
+
+const PAGE_EASE = [0.16, 1, 0.3, 1] as const;
 
 export default function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative flex min-h-[100dvh] w-full max-w-[100vw] items-center justify-center overflow-x-hidden bg-slate-950">
+    <div className="relative flex min-h-[100dvh] w-full max-w-[100vw] flex-col overflow-x-hidden overflow-y-auto bg-[#070B14] font-[Inter,system-ui,sans-serif] tracking-[-0.02em]">
       <AnimatedBackground />
-      <div className="relative z-10 w-full max-w-4xl px-4 py-10 text-center sm:px-8 sm:py-12">
+
+      <motion.main
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, ease: PAGE_EASE }}
+        className="relative z-10 mx-auto flex w-full max-w-[1200px] flex-1 flex-col items-center justify-center px-4 py-12 sm:px-8 sm:py-16"
+      >
+        {/* Logo row */}
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex items-center justify-center mb-8"
+          animate={{ y: [0, -2, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="mb-8 flex items-center justify-center gap-2 sm:mb-10"
         >
-          <div className="relative inline-block">
-            <TursorLogo className="mx-auto h-16 w-16 object-contain sm:h-20 sm:w-20 md:h-24 md:w-24" />
-          </div>
+          <TursorLogo className="h-24 w-24 object-contain" />
+          <span className="text-4xl font-bold text-white sm:text-5xl">
+            Tursor
+          </span>
         </motion.div>
 
-        {/* Title */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+        {/* AI badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className={`mx-auto text-4xl font-bold sm:text-5xl md:text-6xl lg:text-7xl mb-4 pb-2 sm:mb-6 sm:pb-5 ${tursorWordmarkTextGradientClassName}`}
+          transition={{ delay: 0.1, duration: 0.5, ease: PAGE_EASE }}
+          className="mb-6 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5"
         >
-          Tursor
+          <span className="text-xs font-medium text-violet-300">
+            AI-Powered QA Agent
+          </span>
+        </motion.div>
+
+        {/* Headline */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.55, ease: PAGE_EASE }}
+          className="max-w-4xl text-center text-2xl font-extrabold leading-snug sm:text-3xl lg:text-4xl"
+        >
+          <span className="block text-white">Ship UI changes</span>
+          <span className="mt-1 block bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+            with confidence
+          </span>
         </motion.h1>
 
-        {/* Subtitle */}
+        {/* Description */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          className="mb-3 text-lg text-slate-400 sm:mb-4 sm:text-xl"
+          transition={{ delay: 0.22, duration: 0.55, ease: PAGE_EASE }}
+          className="mt-6 max-w-[700px] text-center text-base leading-relaxed text-gray-400 sm:text-lg md:text-[22px] md:leading-[34px]"
         >
-          AI-Powered QA Agent for Code Editors
+          Tursor understands your codebase, executes end-to-end UI tests in real
+          browsers, and catches regressions before they reach your users.
         </motion.p>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="mx-auto mb-8 max-w-2xl text-sm text-slate-500 sm:mb-12 sm:text-base"
-        >
-          Autonomous testing intelligence integrated directly into your
-          development workflow. Catch bugs before they ship with next-generation
-          automation.
-        </motion.p>
+        {/* Feature blocks */}
+        <div className="mt-8 flex w-full justify-center sm:mt-8">
+          <WelcomeFeatures />
+        </div>
 
-        {/* CTA Button */}
+        {/* Primary CTA */}
         <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.8, duration: 0.5, ease: "easeOut" }}
-          onClick={() => navigate("/setup")}
-          className="relative group mx-auto w-full max-w-xs rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-3.5 text-base font-semibold text-white shadow-2xl shadow-blue-500/30 transition-all duration-300 hover:shadow-blue-500/50 sm:max-w-none sm:px-12 sm:py-4 sm:text-lg"
-        >
-          <span className="relative z-10 max-w-[50%]">Get Started</span>
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 blur transition-opacity duration-300" />
-        </motion.button>
-
-        {/* Feature Pills */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          type="button"
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.8 }}
-          className="mt-10 flex flex-wrap justify-center gap-3 sm:mt-16 sm:gap-4"
+          transition={{ delay: 0.45, duration: 0.55, ease: PAGE_EASE }}
+          whileHover={{
+            scale: 1.01,
+            boxShadow: "0 20px 60px rgba(99,102,241,0.36)",
+          }}
+          whileTap={{ scale: 0.995 }}
+          onClick={() => navigate("/initial-setup")}
+          className={`group relative mt-12 w-full max-w-xs sm:mt-14 sm:max-w-sm ${tursorPrimaryButtonClassName}`}
         >
-          {[
-            "Autonomous Testing",
-            "Visual Regression",
-            "Real-time Insights",
-          ].map((feature) => (
-            <div
-              key={feature}
-              className="rounded-full border border-slate-700/50 bg-slate-800/50 px-4 py-2 text-xs text-slate-300 backdrop-blur-sm sm:px-6 sm:text-sm"
-            >
-              {feature}
-            </div>
-          ))}
-        </motion.div>
-      </div>
+          <Rocket className="h-6 w-6 sm:h-6 sm:w-6" aria-hidden />
+          Get Started
+        </motion.button>
+      </motion.main>
     </div>
   );
 }

@@ -1,6 +1,14 @@
 import { useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import type { RunLogCategory, RunLogEntry, RunLogLevel } from "../types/runLogs";
+import type {
+  RunLogCategory,
+  RunLogEntry,
+  RunLogLevel,
+} from "../types/runLogs";
+import {
+  tursorSecondaryButtonClassName,
+  tursorSecondaryIconButtonClassName,
+} from "./tursorButtonClasses";
 
 type Props = {
   logs: RunLogEntry[];
@@ -80,17 +88,21 @@ export function RunLogsPanel({
         aria-expanded={false}
         aria-label="Expand logs panel"
       >
-        <span className="text-base font-semibold text-white sm:text-lg">Logs</span>
+        <span className="text-base font-semibold text-white sm:text-lg">
+          Logs
+        </span>
         <ChevronUp className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
       </button>
     );
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-800/80 bg-slate-950/60">
+    <section className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-800/80 bg-slate-950/60">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800/80 px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold text-white sm:text-lg">Logs</h2>
+          <h2 className="text-base font-semibold text-white sm:text-lg">
+            Logs
+          </h2>
           <p className="mt-0.5 text-xs text-slate-500">
             Live backend activity — newest at the bottom.
           </p>
@@ -100,7 +112,7 @@ export function RunLogsPanel({
             <button
               type="button"
               onClick={onClear}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              className={tursorSecondaryButtonClassName}
             >
               Clear
             </button>
@@ -109,7 +121,7 @@ export function RunLogsPanel({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="rounded-lg border border-slate-700 bg-slate-900 p-2 text-slate-300 hover:bg-slate-800"
+              className={tursorSecondaryIconButtonClassName}
               aria-label="Collapse logs panel"
               aria-expanded
             >
@@ -145,20 +157,22 @@ export function RunLogsPanel({
 
 function LogRow({ entry }: { entry: RunLogEntry }) {
   return (
-    <li className="flex gap-2 rounded-lg border border-slate-800/60 bg-slate-900/40 px-3 py-2 text-xs">
+    <li className="flex items-start gap-2 rounded-lg border border-slate-800/60 bg-slate-900/40 px-3 py-2 text-xs">
       <time
-        className="shrink-0 font-mono text-[10px] text-slate-500 tabular-nums"
+        className="shrink-0 self-center font-mono text-[10px] text-slate-500 tabular-nums"
         dateTime={new Date(entry.timestamp).toISOString()}
       >
         {formatTime(entry.timestamp)}
       </time>
       <span
-        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${CATEGORY_CLASS[entry.category]}`}
+        className={`inline-flex min-h-[1.25rem] shrink-0 items-center justify-center self-center rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide ${CATEGORY_CLASS[entry.category]}`}
       >
         {CATEGORY_LABEL[entry.category]}
       </span>
       <div className="min-w-0 flex-1">
-        <p className={`break-words whitespace-pre-wrap ${LEVEL_CLASS[entry.level]}`}>
+        <p
+          className={`break-words whitespace-pre-wrap ${LEVEL_CLASS[entry.level]}`}
+        >
           {entry.message}
         </p>
         {entry.stepId ? (
