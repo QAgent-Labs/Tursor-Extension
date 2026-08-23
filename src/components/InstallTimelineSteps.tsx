@@ -1,8 +1,20 @@
 import { Fragment, useCallback, useMemo, useRef } from "react";
 import { motion } from "motion/react";
-import { Check, FolderGit2, Hammer, Loader2, Terminal, Server } from "lucide-react";
 import {
-  getVisiblePhasesForStack,
+  Check,
+  FolderGit2,
+  Hammer,
+  Loader2,
+  Terminal,
+  Server,
+  Brain,
+  Boxes,
+} from "lucide-react";
+import { InstallForkArrow } from "./InstallForkArrow";
+import {
+  AI_INSTALL_STEPS,
+  BACKEND_INSTALL_STEPS,
+  getVisiblePhasesForTrack,
   isTerminalStepState,
   type InstallPhase,
   type StepVisualState,
@@ -11,27 +23,31 @@ import { installStepLabel } from "../utils/installStepLabels";
 
 const PHASE_ICONS: Record<InstallPhase, typeof FolderGit2> = {
   clone_repo: FolderGit2,
+  clone_ai_repo: Brain,
   build: Hammer,
+  ai_setup: Boxes,
   cli_install: Terminal,
+  ai_cli_install: Terminal,
   ensure_running: Server,
+  ensure_ai_running: Brain,
 };
 
-const RAIL_WIDTH = "w-6";
-const NODE_SIZE = "h-3 w-3";
-const ROW_HEIGHT = "min-h-[3.25rem]";
+const RAIL_WIDTH = "w-5";
+const NODE_SIZE = "h-2.5 w-2.5";
+const ROW_HEIGHT = "min-h-[2.75rem]";
 
 const DASH_STAGGER_SEC = 0.14;
 const DASH_DURATION_SEC = 0.22;
 
 function nodeGlowClass(status: StepVisualState, isActive: boolean): string {
   if (status === "running" || isActive) {
-    return "bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)] ring-cyan-400/60";
+    return "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.65)] ring-cyan-400/60";
   }
   if (status === "success") {
-    return "bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.55)] ring-violet-400/50";
+    return "bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)] ring-violet-400/50";
   }
   if (status === "failure") {
-    return "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)] ring-rose-400/50";
+    return "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)] ring-rose-400/50";
   }
   if (status === "skipped") {
     return "bg-slate-500 ring-slate-400/40";
@@ -39,27 +55,25 @@ function nodeGlowClass(status: StepVisualState, isActive: boolean): string {
   return "bg-slate-700 ring-slate-600/50";
 }
 
-function railSegmentClass(status: StepVisualState): string {
-  if (status === "success") return "bg-gradient-to-b from-violet-500/70 to-blue-500/50";
-  if (status === "running") return "bg-gradient-to-b from-cyan-400/80 to-violet-500/40";
-  return "bg-slate-700/50";
-}
-
 function StatusIndicator({ status }: { status: StepVisualState }) {
   if (status === "running") {
-    return <Loader2 className="h-5 w-5 shrink-0 animate-spin text-cyan-400" />;
+    return <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan-400" />;
   }
   if (status === "success") {
     return (
-      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 ring-1 ring-emerald-500/40">
-        <Check className="h-3.5 w-3.5 text-emerald-400" strokeWidth={2.5} />
+      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 ring-1 ring-emerald-500/40">
+        <Check className="h-3 w-3 text-emerald-400" strokeWidth={2.5} />
       </div>
     );
   }
   if (status === "failure" || status === "skipped") {
-    return <div className="h-5 w-5 shrink-0 rounded-full bg-slate-700/40 ring-1 ring-slate-600/40" />;
+    return (
+      <div className="h-4 w-4 shrink-0 rounded-full bg-slate-700/40 ring-1 ring-slate-600/40" />
+    );
   }
-  return <div className="h-5 w-5 shrink-0 rounded-full border border-slate-600/50 bg-slate-800/40" />;
+  return (
+    <div className="h-4 w-4 shrink-0 rounded-full border border-slate-600/50 bg-slate-800/40" />
+  );
 }
 
 function VerticalDashConnector({ onComplete }: { onComplete: () => void }) {
@@ -71,7 +85,7 @@ function VerticalDashConnector({ onComplete }: { onComplete: () => void }) {
   }, [onComplete]);
 
   return (
-    <div className={`flex ${RAIL_WIDTH} shrink-0 flex-col items-center py-1`} aria-hidden>
+    <div className={`flex ${RAIL_WIDTH} shrink-0 flex-col items-center py-0.5`} aria-hidden>
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
@@ -97,30 +111,27 @@ function TimelineRow({
   phase,
   status,
   isActiveRow,
-  hasLineBelow,
+  isLast,
   showPendingConnector,
 }: {
   phase: InstallPhase;
   status: StepVisualState;
   isActiveRow: boolean;
-  hasLineBelow: boolean;
+  isLast: boolean;
   showPendingConnector: boolean;
 }) {
   const Icon = PHASE_ICONS[phase];
   const label = installStepLabel(phase, status);
 
   return (
-    <div className="flex gap-3">
+    <div className={`flex gap-2 ${isLast ? "" : "mb-3"}`}>
       <div className={`flex ${RAIL_WIDTH} shrink-0 flex-col items-center`}>
         <div className={`flex ${ROW_HEIGHT} items-center justify-center`}>
           <div
             className={`${NODE_SIZE} shrink-0 rounded-full ring-2 ${nodeGlowClass(status, isActiveRow)}`}
           />
         </div>
-
-        {hasLineBelow ? (
-          <div className={`w-0.5 flex-1 min-h-3 ${railSegmentClass(status)}`} />
-        ) : showPendingConnector ? (
+        {!isLast && showPendingConnector ? (
           <VerticalDashConnector onComplete={() => {}} />
         ) : null}
       </div>
@@ -128,15 +139,15 @@ function TimelineRow({
       <div
         className={
           isActiveRow
-            ? `flex ${ROW_HEIGHT} flex-1 items-center gap-3 rounded-xl border border-cyan-500/20 bg-slate-900/60 px-3 py-2.5 ring-1 ring-cyan-500/10`
-            : `flex ${ROW_HEIGHT} flex-1 items-center gap-3 rounded-xl border border-slate-700/30 bg-slate-900/30 px-3 py-2.5`
+            ? `flex ${ROW_HEIGHT} flex-1 items-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-900/60 px-2 py-2 ring-1 ring-cyan-500/10`
+            : `flex ${ROW_HEIGHT} flex-1 items-center gap-2 rounded-lg border border-slate-700/30 bg-slate-900/30 px-2 py-2`
         }
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-600/40 bg-slate-800/80">
-          <Icon className="h-4 w-4 text-slate-300" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-600/40 bg-slate-800/80">
+          <Icon className="h-3.5 w-3.5 text-slate-300" />
         </div>
         <span
-          className={`min-w-0 flex-1 text-left text-sm ${
+          className={`min-w-0 flex-1 text-left text-xs leading-snug sm:text-[0.8125rem] ${
             status === "pending" ? "text-slate-500" : "text-slate-200"
           }`}
         >
@@ -148,12 +159,14 @@ function TimelineRow({
   );
 }
 
-export function InstallTimelineSteps({
-  steps,
-}: {
-  steps: Record<InstallPhase, StepVisualState>;
-}) {
-  const target = useMemo(() => getVisiblePhasesForStack(steps), [steps]);
+function useTrackDisplay(
+  steps: Record<InstallPhase, StepVisualState>,
+  trackOrder: readonly InstallPhase[],
+) {
+  const target = useMemo(
+    () => getVisiblePhasesForTrack(steps, trackOrder),
+    [steps, trackOrder],
+  );
   const targetLen = target.length;
 
   const safeRevealed = useMemo(() => {
@@ -174,33 +187,90 @@ export function InstallTimelineSteps({
 
   const needsConnector = targetLen > safeRevealed;
 
+  return { displayed, target, targetLen, needsConnector };
+}
+
+function InstallTrackColumn({
+  title,
+  accentClass,
+  steps,
+  trackOrder,
+}: {
+  title: string;
+  accentClass: string;
+  steps: Record<InstallPhase, StepVisualState>;
+  trackOrder: readonly InstallPhase[];
+}) {
+  const { displayed, target, targetLen, needsConnector } = useTrackDisplay(
+    steps,
+    trackOrder,
+  );
+
   return (
-    <div className="mt-6 flex min-h-[3rem] flex-col" role="list">
-      {displayed.map((phase, idx) => {
-        const status = steps[phase];
-        const isLastDisplayed = idx === displayed.length - 1;
-        const isLastInTarget = phase === target[targetLen - 1];
-        const isActiveRow =
-          isLastDisplayed &&
-          isLastInTarget &&
-          !isTerminalStepState(status) &&
-          !needsConnector;
+    <div
+      className="flex min-w-0 flex-col rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 sm:p-3.5"
+      role="list"
+      aria-label={`${title} install steps`}
+    >
+      <div
+        className={`mb-3 flex items-center justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold uppercase tracking-wider sm:text-sm ${accentClass}`}
+      >
+        {title}
+      </div>
 
-        const hasLineBelow = idx < displayed.length - 1;
-        const showPendingConnector = isLastDisplayed && needsConnector;
+      <div className="flex min-h-[2rem] flex-col">
+        {displayed.map((phase, idx) => {
+          const status = steps[phase];
+          const isLastDisplayed = idx === displayed.length - 1;
+          const isLastInTarget = phase === target[targetLen - 1];
+          const isActiveRow =
+            isLastDisplayed &&
+            isLastInTarget &&
+            !isTerminalStepState(status) &&
+            !needsConnector;
 
-        return (
-          <Fragment key={phase}>
-            <TimelineRow
-              phase={phase}
-              status={status}
-              isActiveRow={isActiveRow}
-              hasLineBelow={hasLineBelow}
-              showPendingConnector={showPendingConnector}
-            />
-          </Fragment>
-        );
-      })}
+          const showPendingConnector = isLastDisplayed && needsConnector;
+
+          return (
+            <Fragment key={phase}>
+              <TimelineRow
+                phase={phase}
+                status={status}
+                isActiveRow={isActiveRow}
+                isLast={isLastDisplayed}
+                showPendingConnector={showPendingConnector}
+              />
+            </Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function InstallTimelineSteps({
+  steps,
+}: {
+  steps: Record<InstallPhase, StepVisualState>;
+}) {
+  return (
+    <div className="mt-2 flex w-full flex-col">
+      <InstallForkArrow />
+
+      <div className="mt-1 grid w-full grid-cols-1 gap-x-12 gap-y-8 sm:grid-cols-2">
+        <InstallTrackColumn
+          title="BE"
+          accentClass="border-blue-500/30 bg-blue-950/30 text-blue-200"
+          steps={steps}
+          trackOrder={BACKEND_INSTALL_STEPS}
+        />
+        <InstallTrackColumn
+          title="AI"
+          accentClass="border-violet-500/30 bg-violet-950/30 text-violet-200"
+          steps={steps}
+          trackOrder={AI_INSTALL_STEPS}
+        />
+      </div>
     </div>
   );
 }

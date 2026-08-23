@@ -22,6 +22,10 @@ function tursorCliBinDir(): string {
   return path.join(os.homedir(), ".tursor", "npm-global", "bin");
 }
 
+function tursorAiCliBinDir(): string {
+  return path.join(os.homedir(), ".tursor-ai", "npm-global", "bin");
+}
+
 function pathKeyForPlatform(): "Path" | "PATH" {
   return process.platform === "win32" ? "Path" : "PATH";
 }
@@ -122,8 +126,55 @@ function resolveNpmExecutable(pathValue: string): string | null {
 function buildPathWithTursorCli(seed: string): string {
   return prependPathSegments(seed, [
     tursorCliBinDir(),
+    tursorAiCliBinDir(),
     ...standardNodeBinDirs(),
   ]);
+}
+
+function resolvePythonForInstall(seedPath: string): string | null {
+  const candidates = [
+    process.env.TURSOR_PYTHON,
+    "python3.13",
+    "python3.12",
+    "python3.11",
+    "python3.10",
+    "python3",
+    "/opt/homebrew/bin/python3.13",
+    "/opt/homebrew/bin/python3.12",
+    "/usr/local/bin/python3.12",
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    const resolved = candidate.includes("/")
+      ? candidate
+      : findExecutableOnPath(candidate, seedPath);
+    if (!resolved || !fs.existsSync(resolved)) {
+      continue;
+    }
+    try {
+      execSync(
+        `"${resolved}" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"`,
+        { encoding: "utf8", timeout: 3000 },
+      );
+      return resolved;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+function findExecutableOnPath(name: string, seedPath: string): string | null {
+  for (const dir of seedPath.split(path.delimiter).filter(Boolean)) {
+    const full =
+      process.platform === "win32"
+        ? path.join(dir, `${name}.exe`)
+        : path.join(dir, name);
+    if (fs.existsSync(full)) {
+      return full;
+    }
+  }
+  return null;
 }
 
 /** Install script sets up its own PATH — avoid blocking on login-shell PATH resolution. */
@@ -132,6 +183,10 @@ function envForInstallScript(
 ): NodeJS.ProcessEnv {
   const pathKey = pathKeyForPlatform();
   let nextPath = buildPathWithTursorCli(base[pathKey] ?? "");
+  const loginPath = loginShellPath();
+  if (loginPath) {
+    nextPath = buildPathWithTursorCli(loginPath);
+  }
   const npm = resolveNpmExecutable(nextPath);
   if (npm) {
     nextPath = prependPathSegments(nextPath, [path.dirname(npm)]);
@@ -139,6 +194,10 @@ function envForInstallScript(
   const env: NodeJS.ProcessEnv = { ...base, [pathKey]: nextPath };
   if (npm) {
     env.TURSOR_NPM = npm;
+  }
+  const python = resolvePythonForInstall(nextPath);
+  if (python) {
+    env.TURSOR_PYTHON = python;
   }
   return env;
 }
@@ -199,9 +258,13 @@ type TursorSetupPhase = "needs_install" | "needs_start" | "ready";
 
 type InstallPhase =
   | "clone_repo"
+  | "clone_ai_repo"
   | "build"
+  | "ai_setup"
   | "cli_install"
-  | "ensure_running";
+  | "ai_cli_install"
+  | "ensure_running"
+  | "ensure_ai_running";
 
 type InstallStatusPayload = {
   phase: InstallPhase;
@@ -211,6 +274,7 @@ type InstallStatusPayload = {
   message?: string;
   detail?: string;
   port?: number;
+  aiPort?: number;
 };
 
 function isRunInstallMessage(msg: unknown): msg is WebviewToHostMessage {
@@ -507,9 +571,13 @@ function parseStatusLine(line: string): InstallStatusPayload | null {
 
     if (
       phase !== "clone_repo" &&
+      phase !== "clone_ai_repo" &&
       phase !== "build" &&
+      phase !== "ai_setup" &&
       phase !== "cli_install" &&
-      phase !== "ensure_running"
+      phase !== "ai_cli_install" &&
+      phase !== "ensure_running" &&
+      phase !== "ensure_ai_running"
     ) {
       return null;
     }
@@ -526,6 +594,10 @@ function parseStatusLine(line: string): InstallStatusPayload | null {
       message: raw.message as string | undefined,
       detail: raw.detail as string | undefined,
       port: typeof raw.port === "number" && raw.port > 0 ? raw.port : undefined,
+      aiPort:
+        typeof raw.aiPort === "number" && raw.aiPort > 0
+          ? raw.aiPort
+          : undefined,
     };
   } catch {
     return null;
@@ -591,13 +663,16 @@ async function notifyFileChange(path: string) {
 
 /* ---------------- Helpers ---------------- */
 
-function shouldIgnore(path: string): boolean {
+function shouldIgnore(filePath: string): boolean {
   return (
-    path.includes("node_modules") ||
-    path.includes(".git") ||
-    path.includes("dist") ||
-    path.includes(".next") ||
-    path.includes("build")
+    filePath.includes("node_modules") ||
+    filePath.includes(".git") ||
+    filePath.includes("dist") ||
+    filePath.includes(".next") ||
+    filePath.includes("build") ||
+    filePath.includes(`${path.sep}.tursor${path.sep}embeddings`) ||
+    filePath.includes("/.tursor/embeddings") ||
+    filePath.includes("\\.tursor\\embeddings")
   );
 }
 
@@ -678,13 +753,7 @@ function runInstallScript(
 
   const bash = process.platform === "win32" ? "bash" : "/bin/bash";
 
-  const siblingBackend = path.join(repoRoot, "..", "Tursor-Backend");
   const installEnv = envForInstallScript({ ...process.env });
-  if (!installEnv.TURSOR_BACKEND_SOURCE?.trim() &&
-    fs.existsSync(path.join(siblingBackend, "package.json"))
-  ) {
-    installEnv.TURSOR_BACKEND_SOURCE = siblingBackend;
-  }
 
   const npmPath = resolveNpmExecutable(
     installEnv[pathKeyForPlatform()] ?? "",

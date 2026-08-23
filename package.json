@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "build:webview": "node scripts/sync-extension-env.mjs && mkdir -p extension/scripts && vite build --mode extension",
     "package:extension": "npm run build:webview && cd extension && npm run compile && npm run package",
+    "install:vscode": "npm run package:extension && code --install-extension extension/tursor.vsix --force",
     "lint": "eslint .",
     "preview": "vite preview"
   },

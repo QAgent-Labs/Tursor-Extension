@@ -19,6 +19,8 @@ import { useTursorAppConfig } from "../context/useTursorAppConfig";
 function runButtonDisabledReason(
   connected: boolean,
   isRunning: boolean,
+  contextReady: boolean,
+  phase: string,
   status: string,
   backendOrigin: string | null,
   frontendPort: number | null | undefined,
@@ -27,7 +29,16 @@ function runButtonDisabledReason(
   if (isRunning) {
     return "A run is already in progress.";
   }
+  if (phase === "building") {
+    return "Code context is being created. Please wait.";
+  }
+  if (phase === "error" || phase === "missing_config") {
+    return "Fix the code context error before starting a run.";
+  }
   if (connected) {
+    if (!contextReady) {
+      return "Waiting for workspace embeddings to finish.";
+    }
     if (!frontendPort || frontendPort <= 0) {
       return "Test frontend port is not set. Open Settings or go back to Connect.";
     }
@@ -74,8 +85,10 @@ export default function RunPage() {
     errorMessage,
     hasStarted,
     isRunning,
+    contextReady,
     startRun,
     retryRun,
+    retryContext,
     clearRunningFlag,
   } = useRunContextFlow({
     onScreenshot: appendScreenshot,
@@ -103,11 +116,15 @@ export default function RunPage() {
   const runDisabled =
     !connected ||
     isRunning ||
+    !contextReady ||
+    phase === "building" ||
     !config.frontendPort ||
     config.frontendPort <= 0;
   const runDisabledReason = runButtonDisabledReason(
     connected,
     isRunning,
+    contextReady,
+    phase,
     status,
     backendOrigin,
     config.frontendPort,
@@ -159,7 +176,7 @@ export default function RunPage() {
                 ) : (
                   <>
                     <Play className="h-4 w-4" />
-                    Start run
+                    Run tests
                   </>
                 )}
               </button>
@@ -183,9 +200,13 @@ export default function RunPage() {
               historySessionId={isHistoryView ? historyPreviewSessionId : null}
               logs={logs}
               onClearLogs={clearLogs}
-              onRetry={retryRun}
+              onRetry={retryContext}
               showStartPrompt={
-                !hasStarted && connected && !isRunning && !isHistoryView
+                contextReady &&
+                !hasStarted &&
+                connected &&
+                !isRunning &&
+                !isHistoryView
               }
               isRunning={isRunning}
             />

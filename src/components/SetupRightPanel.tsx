@@ -57,7 +57,7 @@ export function SetupRightPanel({
   installErrorDetail,
 }: Props) {
   return (
-    <div className="flex w-full max-w-3xl flex-col">
+    <div className="flex w-full max-w-4xl flex-col">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

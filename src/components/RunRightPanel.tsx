@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 import { ScreenshotCarousel } from "./ScreenshotCarousel";
 import { RunLogsPanel } from "./RunLogsPanel";
 import { TursorPathText } from "./TursorPathText";
@@ -37,6 +37,7 @@ export function RunRightPanel({
   const isHistoryView = Boolean(historySessionId);
   const isMissing = phase === "missing_config";
   const isError = phase === "error";
+  const isBuilding = phase === "building";
   const showErrorOverlay = !isHistoryView && (isMissing || isError);
 
   const screenshotsSection = (
@@ -89,6 +90,20 @@ export function RunRightPanel({
                 <RefreshCw className="h-4 w-4" />
                 Retry
               </button>
+            </div>
+          </div>
+        ) : null}
+        {isBuilding && !isHistoryView && !showErrorOverlay ? (
+          <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-cyan-500/30 bg-slate-950/85 px-6 py-8 text-center backdrop-blur-sm">
+            <div className="max-w-lg">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-cyan-400" />
+              <h3 className="mt-4 text-lg font-semibold text-white sm:text-xl">
+                Creating code context
+              </h3>
+              <p className="mt-3 text-sm text-slate-400">
+                Workspace embeddings are being built. Please wait before running
+                tests.
+              </p>
             </div>
           </div>
         ) : null}

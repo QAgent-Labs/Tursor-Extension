@@ -1,4 +1,5 @@
 import type { InstallHostToWebviewMessage } from "./types/installStatus";
+import { INSTALL_STEP_ORDER } from "./types/installStatus";
 
 function post(data: InstallHostToWebviewMessage): void {
   window.dispatchEvent(new MessageEvent("message", { data }));
@@ -14,17 +15,18 @@ function delay(ms: number): Promise<void> {
 export async function runBrowserMockInstall(): Promise<void> {
   const step = 380;
 
-  for (const phase of [
-    "clone_repo",
-    "build",
-    "cli_install",
-    "ensure_running",
-  ] as const) {
+  for (const phase of INSTALL_STEP_ORDER) {
     post({ type: "tursorInstallStatus", payload: { phase, state: "start" } });
     await delay(step);
     post({
       type: "tursorInstallStatus",
-      payload: { phase, state: "done", ok: true, port: 9090 },
+      payload: {
+        phase,
+        state: "done",
+        ok: true,
+        port: phase === "ensure_running" ? 9090 : undefined,
+        aiPort: phase === "ensure_ai_running" ? 8000 : undefined,
+      },
     });
     await delay(step);
   }
