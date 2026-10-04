@@ -76,13 +76,14 @@ export function useRunSessions() {
   const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
   const screenshots = currentSession?.screenshots ?? [];
 
-  const startNewSession = useCallback(() => {
+  const startNewSession = useCallback((conversationId?: string | null) => {
     const id = createRunSessionId();
     const session: RunSession = {
       id,
       startedAt: Date.now(),
       screenshots: [],
       status: "running",
+      conversationId: conversationId ?? null,
     };
     setSessions((prev) => {
       const closed = prev.map((s) =>
@@ -108,14 +109,38 @@ export function useRunSessions() {
     });
   }, []);
 
+  const attachRun = useCallback((runId: string, conversationId: string | null) => {
+    setSessions((prev) => {
+      const idx = prev.findIndex((s) => s.status === "running");
+      if (idx === -1) {
+        return [
+          {
+            id: runId,
+            startedAt: Date.now(),
+            screenshots: [],
+            status: "running" as const,
+            conversationId,
+          },
+          ...prev,
+        ];
+      }
+      const next = [...prev];
+      const session = next[idx]!;
+      next[idx] = {
+        ...session,
+        id: runId,
+        conversationId: conversationId ?? session.conversationId ?? null,
+      };
+      return next;
+    });
+    setCurrentSessionId(runId);
+  }, []);
+
   const completeCurrentSession = useCallback((status: RunSessionStatus) => {
-    if (!currentSessionId) return;
     setSessions((prev) =>
-      prev.map((s) =>
-        s.id === currentSessionId ? { ...s, status } : s,
-      ),
+      prev.map((s) => (s.status === "running" ? { ...s, status } : s)),
     );
-  }, [currentSessionId]);
+  }, []);
 
   return {
     sessions,
@@ -124,6 +149,7 @@ export function useRunSessions() {
     screenshots,
     startNewSession,
     appendScreenshot,
+    attachRun,
     completeCurrentSession,
   };
 }

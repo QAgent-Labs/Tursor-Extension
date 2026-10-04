@@ -17,12 +17,14 @@ import {
 type RunFlowOptions = {
   onScreenshot: (url: string) => void;
   onRunStart?: () => void;
+  onCdpStarted?: (runId: string, conversationId: string | null) => void;
   onRunComplete?: (status: "success" | "fail") => void;
 };
 
 export function useRunContextFlow({
   onScreenshot,
   onRunStart,
+  onCdpStarted,
   onRunComplete,
 }: RunFlowOptions) {
   const { config, resolvedWorkspacePath } = useTursorAppConfig();
@@ -130,6 +132,23 @@ export function useRunContextFlow({
       if (
         typeof data === "object" &&
         data !== null &&
+        (data as { type?: string }).type === "cdp_started"
+      ) {
+        const event = data as { runId?: string; conversationId?: string | null };
+        if (typeof event.runId === "string" && event.runId) {
+          onCdpStarted?.(
+            event.runId,
+            typeof event.conversationId === "string" ? event.conversationId : null,
+          );
+          setHasStarted(true);
+          setIsRunning(true);
+          setErrorMessage(null);
+        }
+      }
+
+      if (
+        typeof data === "object" &&
+        data !== null &&
         (data as { type?: string }).type === "complete"
       ) {
         setIsRunning(false);
@@ -137,7 +156,13 @@ export function useRunContextFlow({
         onRunComplete?.(runStatus === "success" ? "success" : "fail");
       }
     });
-  }, [subscribe, onScreenshot, onRunComplete]);
+  }, [subscribe, onScreenshot, onCdpStarted, onRunComplete]);
+
+  const markRunStarted = useCallback(() => {
+    setHasStarted(true);
+    setIsRunning(true);
+    setErrorMessage(null);
+  }, []);
 
   const retryRun = useCallback(() => {
     startCdpRun();
@@ -167,6 +192,7 @@ export function useRunContextFlow({
     isRunning,
     contextReady: phase === "ready",
     startRun: startCdpRun,
+    markRunStarted,
     retryRun,
     retryContext,
     clearRunningFlag,

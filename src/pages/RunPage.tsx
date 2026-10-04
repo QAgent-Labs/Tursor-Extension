@@ -1,99 +1,90 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatedBackground } from "../components/AnimatedBackground";
-import { DisabledReasonTooltip } from "../components/DisabledReasonTooltip";
-import { Loader2, Play, RotateCw, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { RunSettingsSheet } from "../components/RunSettingsSheet";
 import { RunChatPanel } from "../components/RunChatPanel";
+import type { HistoryRunSelection } from "../components/ConversationHistoryList";
 import { RunRightPanel } from "../components/RunRightPanel";
-import {
-  tursorPrimaryButtonClassName,
-  tursorSecondaryIconButtonClassName,
-} from "../components/tursorButtonClasses";
+import { tursorSecondaryIconButtonClassName } from "../components/tursorButtonClasses";
 import { useRunContextFlow } from "../hooks/useRunContextFlow";
 import { useRunLogs } from "../hooks/useRunLogs";
 import { useRunSessions } from "../hooks/useRunSessions";
 import { useEnsureBackendConnection } from "../hooks/useEnsureBackendConnection";
-import { useTursorWebSocket } from "../context/useTursorWebSocket";
 import { useTursorAppConfig } from "../context/useTursorAppConfig";
-
-function runButtonDisabledReason(
-  connected: boolean,
-  isRunning: boolean,
-  contextReady: boolean,
-  phase: string,
-  status: string,
-  backendOrigin: string | null,
-  frontendPort: number | null | undefined,
-  lastError: string | null,
-): string | null {
-  if (isRunning) {
-    return "A run is already in progress.";
-  }
-  if (phase === "building") {
-    return "Code context is being created. Please wait.";
-  }
-  if (phase === "error" || phase === "missing_config") {
-    return "Fix the code context error before starting a run.";
-  }
-  if (connected) {
-    if (!contextReady) {
-      return "Waiting for workspace embeddings to finish.";
-    }
-    if (!frontendPort || frontendPort <= 0) {
-      return "Test frontend port is not set. Open Settings or go back to Connect.";
-    }
-    return null;
-  }
-  if (status === "connecting") {
-    return "Connecting to the Tursor backend…";
-  }
-  if (!backendOrigin) {
-    return "Backend is not configured. Open Settings or go to Connect.";
-  }
-  if (lastError) {
-    return lastError;
-  }
-  return "Not connected to the Tursor backend. Reconnecting…";
-}
 
 export default function RunPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(null);
+  const [shotPreview, setShotPreview] = useState<HistoryRunSelection | null>(
+    null,
+  );
   const {
     sessions,
     currentSessionId,
-    screenshots,
     startNewSession,
     appendScreenshot,
+    attachRun,
     completeCurrentSession,
   } = useRunSessions();
   const { logs, clearLogs } = useRunLogs();
-  const { status, lastError } = useTursorWebSocket();
   const { config, backendOrigin, resolvedWorkspacePath } = useTursorAppConfig();
 
   useEnsureBackendConnection();
 
-  const handleRunStart = () => {
-    startNewSession();
-    clearLogs();
-  };
+  const activeConversationRef = useRef<string | null>(null);
+  const handleConversationChange = useCallback((conversationId: string | null) => {
+    if (activeConversationRef.current !== conversationId) {
+      setShotPreview(null);
+    }
+    activeConversationRef.current = conversationId;
+    setActiveConversationId(conversationId);
+  }, []);
+
+  const handleRunStart = useCallback(
+    (conversationId?: string | null) => {
+      startNewSession(conversationId);
+      clearLogs();
+      setShotPreview(null);
+    },
+    [startNewSession, clearLogs],
+  );
+
+  const handleCdpStarted = useCallback(
+    (runId: string, conversationId: string | null) => {
+      attachRun(runId, conversationId);
+      setShotPreview(null);
+    },
+    [attachRun],
+  );
 
   const {
     phase,
     errorMessage,
-    hasStarted,
     isRunning,
-    contextReady,
-    startRun,
-    retryRun,
+    markRunStarted,
     retryContext,
     clearRunningFlag,
   } = useRunContextFlow({
     onScreenshot: appendScreenshot,
     onRunStart: handleRunStart,
+    onCdpStarted: handleCdpStarted,
     onRunComplete: completeCurrentSession,
   });
 
-  const connected = status === "connected";
+  const prepareChatRun = useCallback(
+    (conversationId: string | null) => {
+      handleRunStart(conversationId);
+      markRunStarted();
+    },
+    [handleRunStart, markRunStarted],
+  );
+
+  const failChatRun = useCallback(() => {
+    completeCurrentSession("fail");
+  }, [completeCurrentSession]);
+
   const hasActiveSession = sessions.some((s) => s.status === "running");
 
   useEffect(() => {
@@ -102,72 +93,38 @@ export default function RunPage() {
     }
   }, [hasActiveSession, clearRunningFlag]);
 
-  const handlePrimaryRun = () => {
-    if (hasStarted) {
-      retryRun();
-    } else {
-      startRun();
-    }
-  };
-
-  const runDisabled =
-    !connected ||
-    isRunning ||
-    !contextReady ||
-    phase === "building" ||
-    !config.frontendPort ||
-    config.frontendPort <= 0;
-  const runDisabledReason = runButtonDisabledReason(
-    connected,
-    isRunning,
-    contextReady,
-    phase,
-    status,
-    backendOrigin,
-    config.frontendPort,
-    lastError,
-  );
+  const homeRun =
+    sessions
+      .filter((session) => session.conversationId === activeConversationId)
+      .sort((a, b) => b.startedAt - a.startedAt)[0] ?? null;
+  const isHistoryView = shotPreview != null;
+  const displayScreenshots = shotPreview?.screenshots ?? homeRun?.screenshots ?? [];
+  const displaySessionKey = shotPreview?.key ?? homeRun?.id ?? currentSessionId;
+  const displayStatus =
+    shotPreview == null
+      ? (homeRun?.status ?? null)
+      : shotPreview.status === "passed"
+        ? "success"
+        : "fail";
 
   return (
-    <div className="relative flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-[100vw] flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="relative flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-[100vw] select-none flex-col overflow-hidden bg-slate-950 text-slate-100">
       <AnimatedBackground />
 
       <div className="relative z-10 flex h-full min-h-0 min-w-0 flex-1 flex-row">
         <RunChatPanel
           backendOrigin={backendOrigin}
           workspacePath={resolvedWorkspacePath || config.workspacePath}
+          runs={sessions}
+          selectedRunId={shotPreview?.key ?? null}
+          onSelectRun={setShotPreview}
+          onConversationChange={handleConversationChange}
+          onRunStart={prepareChatRun}
+          onRunFailed={failChatRun}
         />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col p-5 lg:p-6">
           <div className="relative z-20 flex shrink-0 flex-row items-center justify-end gap-2">
-            <DisabledReasonTooltip
-              disabled={runDisabled}
-              reason={runDisabledReason}
-            >
-              <button
-                type="button"
-                onClick={handlePrimaryRun}
-                disabled={runDisabled}
-                className={tursorPrimaryButtonClassName}
-              >
-                {isRunning ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Running…
-                  </>
-                ) : hasStarted ? (
-                  <>
-                    <RotateCw className="h-4 w-4" />
-                    Retry run
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4" />
-                    Run tests
-                  </>
-                )}
-              </button>
-            </DisabledReasonTooltip>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -182,17 +139,13 @@ export default function RunPage() {
             <RunRightPanel
               phase={phase}
               errorMessage={errorMessage}
-              screenshots={screenshots}
-              sessionKey={currentSessionId}
+              screenshots={displayScreenshots}
+              sessionKey={displaySessionKey}
+              runStatus={displayStatus}
+              historySessionId={isHistoryView ? shotPreview.key : null}
               logs={logs}
               onClearLogs={clearLogs}
               onRetry={retryContext}
-              showStartPrompt={
-                contextReady &&
-                !hasStarted &&
-                connected &&
-                !isRunning
-              }
               isRunning={isRunning}
             />
           </div>

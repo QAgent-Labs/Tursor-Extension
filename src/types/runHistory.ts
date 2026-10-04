@@ -5,6 +5,7 @@ export type RunSession = {
   startedAt: number;
   screenshots: string[];
   status: RunSessionStatus;
+  conversationId?: string | null;
 };
 
 export function createRunSessionId(): string {

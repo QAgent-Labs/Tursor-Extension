@@ -1,6 +1,17 @@
+export type CdpRunStatus = "passed" | "failure";
+
+export type CdpRunRecord = {
+  cdp_step_id: string;
+  status: CdpRunStatus;
+  status_message: string;
+  screenshots: string[];
+};
+
 export type ConversationSummary = {
   case: string;
+  brief_summary: string;
   plans: { id: string; title: string }[];
+  cdp_runs: CdpRunRecord[];
 };
 
 export type ChatTurn = {
@@ -25,11 +36,21 @@ export type StoredMessage = {
   createdAt: string;
 };
 
-const emptySummary = (): ConversationSummary => ({ case: "", plans: [] });
+const emptySummary = (): ConversationSummary => ({
+  case: "",
+  brief_summary: "",
+  plans: [],
+  cdp_runs: [],
+});
 
 function asSummary(raw: unknown): ConversationSummary {
   if (!raw || typeof raw !== "object") return emptySummary();
-  const data = raw as { case?: unknown; plans?: unknown };
+  const data = raw as {
+    case?: unknown;
+    brief_summary?: unknown;
+    plans?: unknown;
+    cdp_runs?: unknown;
+  };
   const plans = Array.isArray(data.plans)
     ? data.plans.flatMap((item) => {
         if (!item || typeof item !== "object") return [];
@@ -43,9 +64,37 @@ function asSummary(raw: unknown): ConversationSummary {
         ];
       })
     : [];
+  const cdpRuns: CdpRunRecord[] = [];
+  if (Array.isArray(data.cdp_runs)) {
+    for (const item of data.cdp_runs) {
+      if (!item || typeof item !== "object") continue;
+      const run = item as {
+        cdp_step_id?: unknown;
+        status?: unknown;
+        status_message?: unknown;
+        screenshots?: unknown;
+      };
+      if (typeof run.cdp_step_id !== "string" || !run.cdp_step_id) continue;
+      if (run.status !== "passed" && run.status !== "failure") continue;
+      cdpRuns.push({
+        cdp_step_id: run.cdp_step_id,
+        status: run.status,
+        status_message:
+          typeof run.status_message === "string" ? run.status_message : "",
+        screenshots: Array.isArray(run.screenshots)
+          ? run.screenshots.filter(
+              (url): url is string => typeof url === "string" && url.length > 0,
+            )
+          : [],
+      });
+    }
+  }
   return {
     case: typeof data.case === "string" ? data.case : "",
+    brief_summary:
+      typeof data.brief_summary === "string" ? data.brief_summary : "",
     plans,
+    cdp_runs: cdpRuns,
   };
 }
 
@@ -113,9 +162,9 @@ export function sendConversationMessage(
 
 export function runCdpPlan(
   origin: string,
-  cdpStepsId: string,
+  input: { cdpStepsId: string; conversationId: string },
 ): Promise<{ ok: true; cdpStepsId: string }> {
-  return postJson(origin, "/chat/run", { cdpStepsId });
+  return postJson(origin, "/chat/run", input);
 }
 
 export function listConversations(

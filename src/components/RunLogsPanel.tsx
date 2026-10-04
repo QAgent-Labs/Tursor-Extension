@@ -134,7 +134,7 @@ export function RunLogsPanel({
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3"
+        className="min-h-0 flex-1 select-text overflow-y-auto px-3 py-3"
         role="log"
         aria-live="polite"
         aria-relevant="additions"

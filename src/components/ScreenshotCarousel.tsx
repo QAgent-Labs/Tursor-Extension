@@ -1,21 +1,56 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, ImageOff, XCircle } from "lucide-react";
 import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
 import { tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
+import type { RunSessionStatus } from "../types/runHistory";
 
 type InnerProps = {
   urls: string[];
+  status?: RunSessionStatus | null;
 };
 
-function ScreenshotCarouselInner({ urls }: InnerProps) {
-  const [index, setIndex] = useState(0);
+function RunStatusPill({ status }: { status: RunSessionStatus }) {
+  if (status === "success") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-200 shadow-lg shadow-black/30">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+        Success
+      </span>
+    );
+  }
+  if (status === "fail") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2.5 py-1 text-[11px] font-medium text-red-200 shadow-lg shadow-black/30">
+        <XCircle className="h-3.5 w-3.5" aria-hidden />
+        Failure
+      </span>
+    );
+  }
+  return null;
+}
+
+function ScreenshotCarouselInner({ urls, status }: InnerProps) {
+  const [index, setIndex] = useState(() => Math.max(0, urls.length - 1));
+  const previousLength = useRef(urls.length);
   const safeIndex = Math.min(index, Math.max(0, urls.length - 1));
   const url = urls[safeIndex]!;
+
+  useEffect(() => {
+    if (urls.length > previousLength.current) {
+      setIndex(urls.length - 1);
+    }
+    previousLength.current = urls.length;
+  }, [urls.length]);
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="relative h-full min-h-0 overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
+        {status === "success" || status === "fail" ? (
+          <div className="absolute right-3 top-3 z-20">
+            <RunStatusPill status={status} />
+          </div>
+        ) : null}
         <AnimatePresence mode="wait">
           <motion.img
             key={url}
@@ -78,9 +113,10 @@ function ScreenshotCarouselInner({ urls }: InnerProps) {
 type Props = {
   urls: string[];
   sessionKey?: string | null;
+  status?: RunSessionStatus | null;
 };
 
-export function ScreenshotCarousel({ urls, sessionKey }: Props) {
+export function ScreenshotCarousel({ urls, sessionKey, status }: Props) {
   if (urls.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/40 px-6 text-center">
@@ -94,6 +130,10 @@ export function ScreenshotCarousel({ urls, sessionKey }: Props) {
   }
 
   return (
-    <ScreenshotCarouselInner key={sessionKey ?? "default"} urls={urls} />
+    <ScreenshotCarouselInner
+      key={sessionKey ?? "default"}
+      urls={urls}
+      status={status}
+    />
   );
 }
