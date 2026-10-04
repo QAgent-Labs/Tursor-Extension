@@ -58,9 +58,6 @@ function runButtonDisabledReason(
 
 export default function RunPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [historyPreviewSessionId, setHistoryPreviewSessionId] = useState<
-    string | null
-  >(null);
   const {
     sessions,
     currentSessionId,
@@ -71,7 +68,7 @@ export default function RunPage() {
   } = useRunSessions();
   const { logs, clearLogs } = useRunLogs();
   const { status, lastError } = useTursorWebSocket();
-  const { config, backendOrigin } = useTursorAppConfig();
+  const { config, backendOrigin, resolvedWorkspacePath } = useTursorAppConfig();
 
   useEnsureBackendConnection();
 
@@ -131,24 +128,14 @@ export default function RunPage() {
     lastError,
   );
 
-  const historySession =
-    historyPreviewSessionId != null
-      ? sessions.find((s) => s.id === historyPreviewSessionId)
-      : null;
-  const isHistoryView = historySession != null;
-  const displayScreenshots = historySession?.screenshots ?? screenshots;
-  const displaySessionKey = historySession?.id ?? currentSessionId;
-
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-[100vw] flex-col overflow-hidden bg-slate-950 text-slate-100">
       <AnimatedBackground />
 
       <div className="relative z-10 flex h-full min-h-0 min-w-0 flex-1 flex-row">
         <RunChatPanel
-          sessions={sessions}
-          currentSessionId={currentSessionId}
-          historyPreviewSessionId={historyPreviewSessionId}
-          onHistoryPreviewChange={setHistoryPreviewSessionId}
+          backendOrigin={backendOrigin}
+          workspacePath={resolvedWorkspacePath || config.workspacePath}
         />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col p-5 lg:p-6">
@@ -195,9 +182,8 @@ export default function RunPage() {
             <RunRightPanel
               phase={phase}
               errorMessage={errorMessage}
-              screenshots={displayScreenshots}
-              sessionKey={displaySessionKey}
-              historySessionId={isHistoryView ? historyPreviewSessionId : null}
+              screenshots={screenshots}
+              sessionKey={currentSessionId}
               logs={logs}
               onClearLogs={clearLogs}
               onRetry={retryContext}
@@ -205,8 +191,7 @@ export default function RunPage() {
                 contextReady &&
                 !hasStarted &&
                 connected &&
-                !isRunning &&
-                !isHistoryView
+                !isRunning
               }
               isRunning={isRunning}
             />

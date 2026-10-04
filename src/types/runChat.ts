@@ -6,6 +6,7 @@ export type ChatMessage = {
   text: string;
   timestamp: number;
   status?: "sending" | "sent" | "failed";
+  cdpStepsId?: string | null;
 };
 
 export type UserMessageOutbound = {

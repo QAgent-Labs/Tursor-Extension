@@ -7,24 +7,32 @@ import {
   type KeyboardEvent,
 } from "react";
 import { motion } from "motion/react";
-import { History, MessageSquare, Send, User, Loader2 } from "lucide-react";
+import { History, MessageSquare, Play, ScrollText, Send, SquarePen, User, Loader2 } from "lucide-react";
 import { TursorLogo } from "./TursorLogo";
 import { tursorWordmarkTextGradientClassName } from "./tursorWordmarkClasses";
-import { RunSessionHistoryList } from "./RunSessionHistoryList";
+import { ConversationHistoryList } from "./ConversationHistoryList";
+import { ConversationSummaryPanel } from "./ConversationSummaryPanel";
 import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
-import { tursorPrimaryIconButtonClassName, tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
-import { useTursorWebSocket } from "../context/useTursorWebSocket";
+import { tursorPrimaryButtonClassName, tursorPrimaryIconButtonClassName, tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
+import {
+  getConversation,
+  listConversations,
+  runCdpPlan,
+  sendConversationMessage,
+  startConversation,
+  type ConversationListItem,
+  type ConversationSummary,
+} from "../api/chat";
 import type { ChatMessage } from "../types/runChat";
-import { parseServerChatEvent } from "../types/runChat";
-import type { RunSession } from "../types/runHistory";
+import { useTursorWebSocket } from "../context/useTursorWebSocket";
 
-type PanelView = "chat" | "history";
+type PanelView = "chat" | "history" | "summary";
+
+const emptySummary: ConversationSummary = { case: "", plans: [] };
 
 type Props = {
-  sessions: RunSession[];
-  currentSessionId: string | null;
-  historyPreviewSessionId: string | null;
-  onHistoryPreviewChange: (sessionId: string | null) => void;
+  backendOrigin: string | null;
+  workspacePath: string | null;
 };
 
 function createId(prefix: string): string {
@@ -32,18 +40,25 @@ function createId(prefix: string): string {
 }
 
 export function RunChatPanel({
-  sessions,
-  currentSessionId,
-  historyPreviewSessionId,
-  onHistoryPreviewChange,
+  backendOrigin,
+  workspacePath,
 }: Props) {
-  const { status, send, subscribe } = useTursorWebSocket();
+  const { status } = useTursorWebSocket();
   const listRef = useRef<HTMLDivElement>(null);
   const formId = useId();
+  const startedSession = useRef<number | null>(null);
 
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [panelView, setPanelView] = useState<PanelView>("chat");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [chatSession, setChatSession] = useState(0);
+  const [summary, setSummary] = useState<ConversationSummary>(emptySummary);
+  const [historyItems, setHistoryItems] = useState<ConversationListItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [runningId, setRunningId] = useState<string | null>(null);
 
   const connected = status === "connected";
 
@@ -58,34 +73,63 @@ export function RunChatPanel({
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    return subscribe((data) => {
-      const chat = parseServerChatEvent(data);
-      if (chat) {
-        setMessages((prev) => {
-          const next = prev.filter((m) => m.id !== chat.id);
-          if (chat.replyTo) {
-            const idx = next.findIndex((m) => m.id === chat.replyTo);
-            if (idx !== -1) {
-              next[idx] = { ...next[idx], status: "sent" };
-            }
-          }
-          return [
-            ...next,
-            {
-              id: chat.id,
-              role: "assistant",
-              text: chat.text,
-              timestamp: Date.now(),
-            },
-          ];
-        });
-      }
-    });
-  }, [subscribe]);
+    if (!connected || !backendOrigin || !workspacePath) {
+      return;
+    }
+    if (startedSession.current === chatSession && conversationId) {
+      return;
+    }
+    startedSession.current = chatSession;
+    let cancelled = false;
+    setBusy(true);
+    void startConversation(backendOrigin, workspacePath)
+      .then((turn) => {
+        if (cancelled) return;
+        setConversationId(turn.conversationId);
+        setSummary(turn.summary);
+        setMessages([
+          {
+            id: createId("assistant"),
+            role: "assistant",
+            text: turn.reply,
+            timestamp: Date.now(),
+            cdpStepsId: turn.cdpStepsId,
+          },
+        ]);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const text = err instanceof Error ? err.message : "Could not start chat.";
+        setMessages([
+          {
+            id: createId("err"),
+            role: "system",
+            text,
+            timestamp: Date.now(),
+          },
+        ]);
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, backendOrigin, workspacePath, chatSession, conversationId]);
+
+  const startNewConversation = () => {
+    if (!connected || !backendOrigin || !workspacePath) return;
+    setPanelView("chat");
+    setDraft("");
+    setConversationId(null);
+    setSummary(emptySummary);
+    setMessages([]);
+    setChatSession((n) => n + 1);
+  };
 
   const sendMessage = useCallback(() => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || busy) return;
 
     const id = createId("user");
     setMessages((prev) => [
@@ -95,29 +139,138 @@ export function RunChatPanel({
         role: "user",
         text,
         timestamp: Date.now(),
-        status: connected ? "sending" : "failed",
+        status: connected && conversationId && backendOrigin && workspacePath ? "sending" : "failed",
       },
     ]);
     setDraft("");
 
-    if (!connected) {
+    if (!connected || !conversationId || !backendOrigin || !workspacePath) {
       setMessages((prev) => [
         ...prev,
         {
           id: createId("err"),
           role: "system",
-          text: "Not connected to the backend. Open Settings and reconnect.",
+          text: "Chat is not ready. Wait for the welcome message, or reconnect.",
           timestamp: Date.now(),
         },
       ]);
       return;
     }
 
-    send({ type: "user_message", id, text });
-    setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, status: "sent" as const } : m)),
-    );
-  }, [draft, connected, send]);
+    setBusy(true);
+    void sendConversationMessage(backendOrigin, {
+      conversationId,
+      message: text,
+      workspacePath,
+    })
+      .then((turn) => {
+        setSummary(turn.summary);
+        setMessages((prev) => [
+          ...prev.map((m) => (m.id === id ? { ...m, status: "sent" as const } : m)),
+          {
+            id: createId("assistant"),
+            role: "assistant" as const,
+            text: turn.reply,
+            timestamp: Date.now(),
+            cdpStepsId: turn.cdpStepsId,
+          },
+        ]);
+      })
+      .catch((err: unknown) => {
+        const detail = err instanceof Error ? err.message : "Request failed";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === id ? { ...m, status: "failed" as const } : m,
+          ).concat({
+            id: createId("err"),
+            role: "system" as const,
+            text: detail,
+            timestamp: Date.now(),
+          }),
+        );
+      })
+      .finally(() => setBusy(false));
+  }, [draft, busy, connected, conversationId, backendOrigin, workspacePath]);
+
+  useEffect(() => {
+    if (panelView !== "history" || !backendOrigin || !workspacePath) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    void listConversations(backendOrigin, workspacePath)
+      .then((items) => {
+        if (!cancelled) setHistoryItems(items);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setHistoryError(
+          err instanceof Error ? err.message : "Could not load conversations.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [panelView, backendOrigin, workspacePath]);
+
+  const openConversation = (id: string) => {
+    if (!backendOrigin) return;
+    if (id === conversationId) {
+      setPanelView("chat");
+      return;
+    }
+    setBusy(true);
+    void getConversation(backendOrigin, id)
+      .then((data) => {
+        startedSession.current = chatSession;
+        setConversationId(id);
+        setSummary(data.summary);
+        setDraft("");
+        setMessages(
+          data.messages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            text: message.content,
+            timestamp: Date.parse(message.createdAt) || Date.now(),
+            cdpStepsId:
+              typeof message.metadata?.cdpStepsId === "string"
+                ? message.metadata.cdpStepsId
+                : null,
+          })),
+        );
+        setPanelView("chat");
+      })
+      .catch((err: unknown) => {
+        setHistoryError(
+          err instanceof Error ? err.message : "Could not open that conversation.",
+        );
+      })
+      .finally(() => setBusy(false));
+  };
+
+  const onRunTest = useCallback(
+    (cdpStepsId: string) => {
+      if (!backendOrigin || runningId) return;
+      setRunningId(cdpStepsId);
+      void runCdpPlan(backendOrigin, cdpStepsId)
+        .catch((err: unknown) => {
+          const detail = err instanceof Error ? err.message : "Could not start the run.";
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: createId("err"),
+              role: "system",
+              text: detail,
+              timestamp: Date.now(),
+            },
+          ]);
+        })
+        .finally(() => setRunningId(null));
+    },
+    [backendOrigin, runningId],
+  );
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -159,51 +312,56 @@ export function RunChatPanel({
             {connectionLabel}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (panelView === "history") {
-              onHistoryPreviewChange(null);
-              setPanelView("chat");
-            } else {
-              setPanelView("history");
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={startNewConversation}
+            disabled={!connected || !backendOrigin || !workspacePath}
+            className={`${tursorSecondaryIconButtonClassName} text-slate-400`}
+            aria-label="New conversation"
+            title="New conversation"
+          >
+            <SquarePen className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPanelView(panelView === "history" ? "chat" : "history");
+            }}
+            className={`${tursorSecondaryIconButtonClassName} ${
+              panelView === "history"
+                ? "border-cyan-500/50 text-cyan-300"
+                : "text-slate-400"
+            }`}
+            aria-label={
+              panelView === "history" ? "Back to chat" : "Conversation history"
             }
-          }}
-          className={`${tursorSecondaryIconButtonClassName} ${
-            panelView === "history"
-              ? "border-cyan-500/50 text-cyan-300"
-              : "text-slate-400"
-          }`}
-          aria-label={
-            panelView === "history" ? "Back to chat" : "View test run history"
-          }
-          title={
-            panelView === "history" ? "Back to chat" : "Test run history"
-          }
-        >
-          {panelView === "history" ? (
-            <MessageSquare className="h-4 w-4" />
-          ) : (
-            <History className="h-4 w-4" />
-          )}
-        </button>
+            title={
+              panelView === "history" ? "Back to chat" : "Conversation history"
+            }
+          >
+            {panelView === "history" ? (
+              <MessageSquare className="h-4 w-4" />
+            ) : (
+              <History className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {panelView === "history" ? (
-        <RunSessionHistoryList
-          sessions={sessions}
-          currentSessionId={currentSessionId}
-          selectedSessionId={historyPreviewSessionId}
-          onSelectSession={(sessionId) => {
-            if (sessionId === currentSessionId) {
-              onHistoryPreviewChange(null);
-              return;
-            }
-            onHistoryPreviewChange(sessionId);
-          }}
+        <ConversationHistoryList
+          conversations={historyItems}
+          currentConversationId={conversationId}
+          loading={historyLoading}
+          error={historyError}
+          onSelect={openConversation}
         />
       ) : (
         <>
+          {panelView === "summary" ? (
+            <ConversationSummaryPanel summary={summary} />
+          ) : (
           <div
             ref={listRef}
             className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-4"
@@ -217,9 +375,17 @@ export function RunChatPanel({
                 right.
               </p>
             ) : (
-              messages.map((msg) => <ChatBubble key={msg.id} message={msg} />)
+              messages.map((msg) => (
+                <ChatBubble
+                  key={msg.id}
+                  message={msg}
+                  running={runningId === msg.cdpStepsId && Boolean(msg.cdpStepsId)}
+                  onRunTest={onRunTest}
+                />
+              ))
             )}
           </div>
+          )}
 
           <div className="border-t border-slate-800/80 p-3">
             <div className="flex items-end gap-2 rounded-xl bg-slate-900/80 p-2 ring-1 ring-slate-700/50">
@@ -266,7 +432,7 @@ export function RunChatPanel({
                 <button
                   type="button"
                   onClick={sendMessage}
-                  disabled={!connected || !draft.trim()}
+                  disabled={!connected || !draft.trim() || busy || !conversationId}
                   className={tursorPrimaryIconButtonClassName}
                   aria-label="Send message"
                 >
@@ -277,6 +443,23 @@ export function RunChatPanel({
             <p className="mt-1.5 text-center text-[10px] text-slate-600">
               Enter to send · Shift+Enter for new line
             </p>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  setPanelView(panelView === "summary" ? "chat" : "summary")
+                }
+                className={`${tursorSecondaryIconButtonClassName} ${
+                  panelView === "summary"
+                    ? "border-cyan-500/50 text-cyan-300"
+                    : "text-slate-400"
+                }`}
+                aria-label={panelView === "summary" ? "Close summary" : "Open summary"}
+                title="Summary"
+              >
+                <ScrollText className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -284,7 +467,15 @@ export function RunChatPanel({
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({
+  message,
+  running,
+  onRunTest,
+}: {
+  message: ChatMessage;
+  running: boolean;
+  onRunTest: (cdpStepsId: string) => void;
+}) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
 
@@ -317,6 +508,21 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         }`}
       >
         <p className="whitespace-pre-wrap">{message.text}</p>
+        {message.cdpStepsId ? (
+          <button
+            type="button"
+            onClick={() => onRunTest(message.cdpStepsId!)}
+            disabled={running}
+            className={`${tursorPrimaryButtonClassName} mt-2`}
+          >
+            {running ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Play className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {running ? "Starting…" : "Run Test"}
+          </button>
+        ) : null}
         {message.status === "sending" ? (
           <p className="mt-1 flex items-center gap-1 text-[10px] text-slate-500">
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
