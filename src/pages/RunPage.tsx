@@ -5,6 +5,8 @@ import { RunSettingsSheet } from "../components/RunSettingsSheet";
 import { RunChatPanel } from "../components/RunChatPanel";
 import type { HistoryRunSelection } from "../components/ConversationHistoryList";
 import { RunRightPanel } from "../components/RunRightPanel";
+import type { ConversationSummary } from "../api/chat";
+import { buildSuiteGroups } from "../runs/suiteGroups";
 import { tursorSecondaryIconButtonClassName } from "../components/tursorButtonClasses";
 import { useRunContextFlow } from "../hooks/useRunContextFlow";
 import { useRunLogs } from "../hooks/useRunLogs";
@@ -20,9 +22,14 @@ export default function RunPage() {
   const [shotPreview, setShotPreview] = useState<HistoryRunSelection | null>(
     null,
   );
+  const [conversationSummary, setConversationSummary] =
+    useState<ConversationSummary | null>(null);
+  const [highlight, setHighlight] = useState<{
+    caseId: string;
+    token: number;
+  } | null>(null);
   const {
     sessions,
-    currentSessionId,
     startNewSession,
     appendScreenshot,
     attachRun,
@@ -37,6 +44,7 @@ export default function RunPage() {
   const handleConversationChange = useCallback((conversationId: string | null) => {
     if (activeConversationRef.current !== conversationId) {
       setShotPreview(null);
+      setHighlight(null);
     }
     activeConversationRef.current = conversationId;
     setActiveConversationId(conversationId);
@@ -47,6 +55,7 @@ export default function RunPage() {
       startNewSession(conversationId);
       clearLogs();
       setShotPreview(null);
+      setHighlight(null);
     },
     [startNewSession, clearLogs],
   );
@@ -73,13 +82,45 @@ export default function RunPage() {
     onRunComplete: completeCurrentSession,
   });
 
-  const prepareChatRun = useCallback(
-    (conversationId: string | null) => {
-      handleRunStart(conversationId);
+  const beginCaseRun = useCallback(
+    (run: {
+      conversationId: string;
+      caseId: string;
+      responseId: string;
+      feature: string;
+      title: string;
+    }) => {
+      startNewSession(run.conversationId, {
+        caseId: run.caseId,
+        responseId: run.responseId,
+        feature: run.feature,
+        caseTitle: run.title,
+      });
+      clearLogs();
+      setShotPreview(null);
+      setHighlight(null);
       markRunStarted();
     },
-    [handleRunStart, markRunStarted],
+    [startNewSession, clearLogs, markRunStarted],
   );
+
+  const viewCase = useCallback((caseId: string) => {
+    setShotPreview(null);
+    setHighlight({ caseId, token: Date.now() });
+  }, []);
+
+  useEffect(() => {
+    if (!highlight) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cell = document.getElementById(`run-cell-${highlight.caseId}`);
+      if (cell?.contains(target)) return;
+      setHighlight(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [highlight]);
 
   const failChatRun = useCallback(() => {
     completeCurrentSession("fail");
@@ -93,19 +134,18 @@ export default function RunPage() {
     }
   }, [hasActiveSession, clearRunningFlag]);
 
-  const homeRun =
-    sessions
-      .filter((session) => session.conversationId === activeConversationId)
-      .sort((a, b) => b.startedAt - a.startedAt)[0] ?? null;
-  const isHistoryView = shotPreview != null;
-  const displayScreenshots = shotPreview?.screenshots ?? homeRun?.screenshots ?? [];
-  const displaySessionKey = shotPreview?.key ?? homeRun?.id ?? currentSessionId;
-  const displayStatus =
-    shotPreview == null
-      ? (homeRun?.status ?? null)
-      : shotPreview.status === "passed"
-        ? "success"
-        : "fail";
+  const liveSession =
+    sessions.find(
+      (session) =>
+        session.status === "running" &&
+        session.conversationId === activeConversationId &&
+        session.caseId,
+    ) ?? null;
+  const groups = buildSuiteGroups(
+    conversationSummary?.cdp_runs ?? [],
+    sessions,
+    activeConversationId,
+  );
 
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-[100vw] select-none flex-col overflow-hidden bg-slate-950 text-slate-100">
@@ -117,9 +157,10 @@ export default function RunPage() {
           workspacePath={resolvedWorkspacePath || config.workspacePath}
           runs={sessions}
           selectedRunId={shotPreview?.key ?? null}
-          onSelectRun={setShotPreview}
           onConversationChange={handleConversationChange}
-          onRunStart={prepareChatRun}
+          onSummaryChange={setConversationSummary}
+          onRunCase={beginCaseRun}
+          onViewCase={viewCase}
           onRunFailed={failChatRun}
         />
 
@@ -137,12 +178,29 @@ export default function RunPage() {
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col pt-3">
             <RunRightPanel
+              conversationId={activeConversationId}
               phase={phase}
               errorMessage={errorMessage}
-              screenshots={displayScreenshots}
-              sessionKey={displaySessionKey}
-              runStatus={displayStatus}
-              historySessionId={isHistoryView ? shotPreview.key : null}
+              groups={groups}
+              highlightedCaseId={highlight?.caseId ?? null}
+              highlightToken={highlight?.token ?? 0}
+              liveRunKey={
+                liveSession?.caseId
+                  ? `${liveSession.caseId}:${liveSession.startedAt}`
+                  : null
+              }
+              liveCaseId={liveSession?.caseId ?? null}
+              preview={
+                shotPreview
+                  ? {
+                      key: shotPreview.key,
+                      title: shotPreview.title || "Test case",
+                      screenshots: shotPreview.screenshots,
+                      status: shotPreview.status,
+                    }
+                  : null
+              }
+              onClosePreview={() => setShotPreview(null)}
               logs={logs}
               onClearLogs={clearLogs}
               onRetry={retryContext}

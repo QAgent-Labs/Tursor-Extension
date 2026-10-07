@@ -6,6 +6,7 @@ import { FormattedAiText } from "./FormattedAiText";
 
 export type HistoryRunSelection = {
   key: string;
+  title: string;
   screenshots: string[];
   status: "passed" | "failure";
 };
@@ -18,8 +19,7 @@ type Props = {
   loading: boolean;
   error: string | null;
   onBack: () => void;
-  onSelect: (conversationId: string) => void;
-  onSelectRun: (run: HistoryRunSelection) => void;
+  onSelect: (conversationId: string, caseId?: string) => void;
 };
 
 function localRunsFor(
@@ -88,7 +88,6 @@ export function ConversationHistoryList({
   error,
   onBack,
   onSelect,
-  onSelectRun,
 }: Props) {
   const [openIds, setOpenIds] = useState<string[]>([]);
 
@@ -119,8 +118,9 @@ export function ConversationHistoryList({
         const savedRuns = item.summary.cdp_runs;
         const shotCursor = { index: 0 };
         const visibleRuns = savedRuns.map((run, index) => ({
-          key: `${item.id}:${index}:${run.cdp_step_id}`,
-          cdpStepId: run.cdp_step_id,
+          key: `${item.id}:${index}:${run.case_id || run.cdp_step_id}`,
+          cdpStepId: run.case_id || run.cdp_step_id,
+          title: run.title,
           status: run.status,
           statusMessage: run.status_message,
           screenshots: screenshotsFor(run, localRuns, shotCursor),
@@ -188,13 +188,7 @@ export function ConversationHistoryList({
                       <li key={run.key}>
                         <button
                           type="button"
-                          onClick={() =>
-                            onSelectRun({
-                              key: run.key,
-                              screenshots: run.screenshots,
-                              status: run.status,
-                            })
-                          }
+                          onClick={() => onSelect(item.id, run.cdpStepId)}
                           className={`w-full rounded-lg border px-3 py-2 text-left ${
                             selected
                               ? "border-cyan-500/50 bg-cyan-950/50"
@@ -203,7 +197,8 @@ export function ConversationHistoryList({
                         >
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm text-slate-200">
-                              {run.status === "passed" ? "Passed" : "Failed"}
+                              {run.title ||
+                                (run.status === "passed" ? "Passed" : "Failed")}
                             </p>
                             <StatusPill
                               status={run.status === "passed" ? "success" : "fail"}

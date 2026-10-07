@@ -7,13 +7,10 @@ import {
   type KeyboardEvent,
 } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { History, MessageSquare, Play, ScrollText, Send, SquarePen, Loader2, X } from "lucide-react";
+import { ArrowRight, History, MessageSquare, Play, ScrollText, Send, SquarePen, Loader2, X } from "lucide-react";
 import { TursorLogo } from "./TursorLogo";
 import { tursorWordmarkTextGradientClassName } from "./tursorWordmarkClasses";
-import {
-  ConversationHistoryList,
-  type HistoryRunSelection,
-} from "./ConversationHistoryList";
+import { ConversationHistoryList } from "./ConversationHistoryList";
 import { ConversationSummaryPanel } from "./ConversationSummaryPanel";
 import { FormattedAiText } from "./FormattedAiText";
 import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
@@ -24,8 +21,12 @@ import {
   runCdpPlan,
   sendConversationMessage,
   startConversation,
+  suiteFromMetadata,
+  type CdpRunRecord,
+  type ChatSuite,
   type ConversationListItem,
   type ConversationSummary,
+  type SuiteCaseView,
 } from "../api/chat";
 import type { ChatMessage } from "../types/runChat";
 import type { RunSession } from "../types/runHistory";
@@ -42,14 +43,55 @@ const emptySummary: ConversationSummary = {
   cdp_runs: [],
 };
 
+function runCaseId(run: CdpRunRecord): string {
+  return run.case_id || run.cdp_step_id;
+}
+
+function withLocalRun(
+  summary: ConversationSummary,
+  run: CdpRunRecord,
+): ConversationSummary {
+  const id = runCaseId(run);
+  const already = summary.cdp_runs.some(
+    (item) =>
+      runCaseId(item) === id &&
+      item.status === run.status &&
+      item.screenshots.length >= run.screenshots.length,
+  );
+  if (already) return summary;
+  return { ...summary, cdp_runs: [...summary.cdp_runs, run] };
+}
+
+function mergeRuns(server: CdpRunRecord[], local: CdpRunRecord[]): CdpRunRecord[] {
+  const merged = [...server];
+  for (const run of local) {
+    const id = runCaseId(run);
+    const known = merged.some(
+      (item) =>
+        runCaseId(item) === id &&
+        item.status === run.status &&
+        item.screenshots.length >= run.screenshots.length,
+    );
+    if (!known) merged.push(run);
+  }
+  return merged;
+}
+
 type Props = {
   backendOrigin: string | null;
   workspacePath: string | null;
   runs: RunSession[];
   selectedRunId: string | null;
-  onSelectRun: (run: HistoryRunSelection) => void;
   onConversationChange?: (conversationId: string | null) => void;
-  onRunStart: (conversationId: string | null) => void;
+  onSummaryChange?: (summary: ConversationSummary) => void;
+  onRunCase: (run: {
+    conversationId: string;
+    caseId: string;
+    responseId: string;
+    feature: string;
+    title: string;
+  }) => void;
+  onViewCase: (caseId: string) => void;
   onRunFailed: () => void;
 };
 
@@ -62,9 +104,10 @@ export function RunChatPanel({
   workspacePath,
   runs,
   selectedRunId,
-  onSelectRun,
   onConversationChange,
-  onRunStart,
+  onSummaryChange,
+  onRunCase,
+  onViewCase,
   onRunFailed,
 }: Props) {
   const { status, subscribe } = useTursorWebSocket();
@@ -85,23 +128,70 @@ export function RunChatPanel({
   const [historyTick, setHistoryTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
-  const [runningId, setRunningId] = useState<string | null>(null);
+  const [runningCaseId, setRunningCaseId] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{
+    caseId: string;
+    token: number;
+  } | null>(null);
+  const openRequestRef = useRef(0);
+  const runsRef = useRef(runs);
+  const runningCaseRef = useRef(runningCaseId);
+  runsRef.current = runs;
+  runningCaseRef.current = runningCaseId;
 
   const connected = status === "connected";
 
   useEffect(() => {
     onConversationChange?.(conversationId);
+    setRunningCaseId(null);
   }, [conversationId, onConversationChange]);
+
+  useEffect(() => {
+    if (!focusRequest || !conversationId) return;
+    onViewCase(focusRequest.caseId);
+  }, [focusRequest, conversationId, onViewCase]);
+
+  useEffect(() => {
+    onSummaryChange?.(summary);
+  }, [summary, onSummaryChange]);
 
   useEffect(() => {
     return subscribe((data) => {
       if (!data || typeof data !== "object") return;
       if ((data as { type?: string }).type !== "complete") return;
       setHistoryTick((tick) => tick + 1);
+      const caseId = runningCaseRef.current;
+      const outcome =
+        (data as { status?: string }).status === "success" ? "passed" : "failure";
+      if (caseId) {
+        const session = runsRef.current.find(
+          (item) => item.caseId === caseId && item.conversationId === conversationId,
+        );
+        setSummary((prev) =>
+          withLocalRun(prev, {
+            cdp_step_id: caseId,
+            case_id: caseId,
+            status: outcome,
+            status_message: "",
+            screenshots: session?.screenshots ?? [],
+            response_id: session?.responseId ?? "",
+            feature: session?.feature ?? "",
+            title: session?.caseTitle ?? "",
+            kind: "",
+          }),
+        );
+        setRunningCaseId(null);
+      }
       if (!backendOrigin || !conversationId) return;
       void getConversation(backendOrigin, conversationId)
-        .then((loaded) => setSummary(loaded.summary))
-        .catch(() => undefined);
+        .then((loaded) => {
+          setSummary((prev) => ({
+            ...loaded.summary,
+            cdp_runs: mergeRuns(loaded.summary.cdp_runs, prev.cdp_runs),
+          }));
+          setRunningCaseId(null);
+        })
+        .catch(() => setRunningCaseId(null));
     });
   }, [subscribe, backendOrigin, conversationId]);
 
@@ -139,11 +229,11 @@ export function RunChatPanel({
         setSummary(turn.summary);
         setMessages([
           {
-            id: createId("assistant"),
+            id: turn.responseId || createId("assistant"),
             role: "assistant",
             text: turn.reply,
             timestamp: Date.now(),
-            cdpStepsId: turn.cdpStepsId,
+            suite: turn.suite,
           },
         ]);
       })
@@ -221,11 +311,11 @@ export function RunChatPanel({
         setMessages((prev) => [
           ...prev.map((m) => (m.id === id ? { ...m, status: "sent" as const } : m)),
           {
-            id: createId("assistant"),
+            id: turn.responseId || createId("assistant"),
             role: "assistant" as const,
             text: turn.reply,
             timestamp: Date.now(),
-            cdpStepsId: turn.cdpStepsId,
+            suite: turn.suite,
           },
         ]);
       })
@@ -268,63 +358,93 @@ export function RunChatPanel({
     };
   }, [panelView, backendOrigin, workspacePath, historyTick]);
 
-  const openConversation = (id: string) => {
+  const openConversation = (id: string, focusCaseId?: string) => {
     if (!backendOrigin) return;
+    const focus = focusCaseId?.trim() || "";
     if (id === conversationId) {
       setPanelView("chat");
+      if (focus) onViewCase(focus);
       return;
     }
+    const request = openRequestRef.current + 1;
+    openRequestRef.current = request;
+    const listed = historyItems.find((item) => item.id === id);
+    setSummary(listed?.summary ?? emptySummary);
+    setFocusRequest(focus ? { caseId: focus, token: Date.now() } : null);
+    startedSession.current = chatSession;
+    setConversationId(id);
+    setDraft("");
+    setMessages([]);
+    setPanelView("chat");
     setBusy(true);
     void getConversation(backendOrigin, id)
       .then((data) => {
-        startedSession.current = chatSession;
-        setConversationId(id);
+        if (openRequestRef.current !== request) return;
         setSummary(data.summary);
-        setDraft("");
         setMessages(
-          data.messages.map((message) => ({
-            id: message.id,
-            role: message.role,
-            text: message.content,
-            timestamp: Date.parse(message.createdAt) || Date.now(),
-            cdpStepsId:
-              typeof message.metadata?.cdpStepsId === "string"
-                ? message.metadata.cdpStepsId
-                : null,
-          })),
+          data.messages.map((message) => {
+            const suite = suiteFromMetadata(message.metadata);
+            const legacyId = message.metadata?.cdpStepsId;
+            return {
+              id: message.id,
+              role: message.role,
+              text: message.content,
+              timestamp: Date.parse(message.createdAt) || Date.now(),
+              suite,
+              cdpStepsId:
+                suite || typeof legacyId !== "string" ? null : legacyId,
+            };
+          }),
         );
-        setPanelView("chat");
+        if (focus) setFocusRequest({ caseId: focus, token: Date.now() });
       })
       .catch((err: unknown) => {
+        if (openRequestRef.current !== request) return;
         setHistoryError(
           err instanceof Error ? err.message : "Could not open that conversation.",
         );
       })
-      .finally(() => setBusy(false));
+      .finally(() => {
+        if (openRequestRef.current === request) setBusy(false);
+      });
   };
 
   const onRunTest = useCallback(
-    (cdpStepsId: string) => {
-      if (!backendOrigin || runningId || !conversationId) return;
-      onRunStart(conversationId);
-      setRunningId(cdpStepsId);
-      void runCdpPlan(backendOrigin, { cdpStepsId, conversationId })
-        .catch((err: unknown) => {
-          onRunFailed();
-          const detail = err instanceof Error ? err.message : "Could not start the run.";
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: createId("err"),
-              role: "system",
-              text: detail,
-              timestamp: Date.now(),
-            },
-          ]);
-        })
-        .finally(() => setRunningId(null));
+    (testCase: SuiteCaseView, responseId: string, feature: string) => {
+      const alreadyRunning = runs.some(
+        (session) =>
+          session.status === "running" &&
+          session.conversationId === conversationId &&
+          Boolean(session.caseId),
+      );
+      if (!backendOrigin || runningCaseId || alreadyRunning || !conversationId) return;
+      onRunCase({
+        conversationId,
+        caseId: testCase.id,
+        responseId,
+        feature,
+        title: testCase.title,
+      });
+      setRunningCaseId(testCase.id);
+      void runCdpPlan(backendOrigin, {
+        cdpStepsId: testCase.id,
+        conversationId,
+      }).catch((err: unknown) => {
+        setRunningCaseId(null);
+        onRunFailed();
+        const detail = err instanceof Error ? err.message : "Could not start the run.";
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: createId("err"),
+            role: "system",
+            text: detail,
+            timestamp: Date.now(),
+          },
+        ]);
+      });
     },
-    [backendOrigin, runningId, conversationId, onRunStart, onRunFailed],
+    [backendOrigin, runningCaseId, conversationId, onRunCase, onRunFailed, runs],
   );
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -333,6 +453,14 @@ export function RunChatPanel({
       sendMessage();
     }
   };
+
+  const liveCase = runs.find(
+    (session) =>
+      session.status === "running" &&
+      session.conversationId === conversationId &&
+      session.caseId,
+  );
+  const activeRunCaseId = liveCase?.caseId ?? runningCaseId;
 
   const connectionLabel =
     status === "connected"
@@ -414,7 +542,6 @@ export function RunChatPanel({
           error={historyError}
           onBack={() => setPanelView("chat")}
           onSelect={openConversation}
-          onSelectRun={onSelectRun}
         />
       ) : (
         <>
@@ -427,16 +554,19 @@ export function RunChatPanel({
           >
             {messages.length === 0 && !busy ? (
               <p className="py-8 text-center text-xs text-slate-600">
-                Chat is for test instructions. Logs and screenshots appear on the
-                right.
+                Chat is for test instructions. Logs and runs appear on the right.
               </p>
             ) : (
               messages.map((msg) => (
                 <ChatBubble
                   key={msg.id}
                   message={msg}
-                  running={runningId === msg.cdpStepsId && Boolean(msg.cdpStepsId)}
+                  runs={summary.cdp_runs}
+                  sessions={runs}
+                  conversationId={conversationId}
+                  runningCaseId={activeRunCaseId}
                   onRunTest={onRunTest}
+                  onViewCase={onViewCase}
                 />
               ))
             )}
@@ -623,14 +753,194 @@ function SummaryModal({
   );
 }
 
+function caseWasRun(
+  saved: ConversationSummary["cdp_runs"],
+  sessions: RunSession[],
+  conversationId: string | null,
+  caseId: string,
+): boolean {
+  if (saved.some((run) => runCaseId(run) === caseId)) return true;
+  return sessions.some(
+    (session) =>
+      session.caseId === caseId &&
+      session.conversationId === conversationId &&
+      session.status !== "running",
+  );
+}
+
+function CaseRunButton({
+  testCase,
+  responseId,
+  feature,
+  finished,
+  runningCaseId,
+  onRunTest,
+  onViewCase,
+}: {
+  testCase: SuiteCaseView;
+  responseId: string;
+  feature: string;
+  finished: boolean;
+  runningCaseId: string | null;
+  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onViewCase: (caseId: string) => void;
+}) {
+  const running = runningCaseId === testCase.id;
+  const blocked = Boolean(runningCaseId);
+  const viewClass =
+    "mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-xs font-semibold text-black shadow-[0_6px_20px_rgba(255,255,255,0.12)] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
+  if (running) {
+    return (
+      <button type="button" disabled className={viewClass}>
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        Running
+      </button>
+    );
+  }
+  if (finished) {
+    return (
+      <button
+        type="button"
+        disabled={blocked}
+        onClick={() => onViewCase(testCase.id)}
+        className={viewClass}
+      >
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        View test
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={blocked}
+      onClick={() => onRunTest(testCase, responseId, feature)}
+      className={`${tursorPrimaryButtonClassName} mt-2`}
+    >
+      <Play className="h-3.5 w-3.5" aria-hidden />
+      Run Test
+    </button>
+  );
+}
+
+function SuiteCaseBlock({
+  testCase,
+  responseId,
+  feature,
+  runs,
+  sessions,
+  conversationId,
+  runningCaseId,
+  onRunTest,
+  onViewCase,
+}: {
+  testCase: SuiteCaseView;
+  responseId: string;
+  feature: string;
+  runs: ConversationSummary["cdp_runs"];
+  sessions: RunSession[];
+  conversationId: string | null;
+  runningCaseId: string | null;
+  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onViewCase: (caseId: string) => void;
+}) {
+  return (
+    <li>
+      <span className="font-semibold text-slate-50">{testCase.title}</span>
+      {testCase.explanation ? (
+        <FormattedAiText text={testCase.explanation} className="mt-1" />
+      ) : null}
+      <CaseRunButton
+        testCase={testCase}
+        responseId={responseId}
+        feature={feature}
+        finished={caseWasRun(runs, sessions, conversationId, testCase.id)}
+        runningCaseId={runningCaseId}
+        onRunTest={onRunTest}
+        onViewCase={onViewCase}
+      />
+    </li>
+  );
+}
+
+function SuiteReply({
+  suite,
+  responseId,
+  runs,
+  sessions,
+  conversationId,
+  runningCaseId,
+  onRunTest,
+  onViewCase,
+}: {
+  suite: ChatSuite;
+  responseId: string;
+  runs: ConversationSummary["cdp_runs"];
+  sessions: RunSession[];
+  conversationId: string | null;
+  runningCaseId: string | null;
+  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onViewCase: (caseId: string) => void;
+}) {
+  const success = suite.cases.filter((item) => item.kind === "success");
+  const failure = suite.cases.filter((item) => item.kind === "failure");
+  const edges = suite.cases.filter((item) => item.kind === "edge");
+  const shared = {
+    responseId,
+    feature: suite.feature,
+    runs,
+    sessions,
+    conversationId,
+    runningCaseId,
+    onRunTest,
+    onViewCase,
+  };
+  const feature = suite.feature.trim() || "this feature";
+  const onlyCase = suite.cases.length === 1 ? suite.cases[0] : null;
+  const intro = onlyCase
+    ? `For ${feature}, here is the ${onlyCase.title}.`
+    : `For ${feature}, here is the test suite generated.`;
+  return (
+    <div className="flex flex-col gap-3">
+      <p>{intro}</p>
+      <ul className="list-disc space-y-3 pl-5 marker:text-slate-200">
+      {success.map((testCase) => (
+        <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
+      ))}
+      {failure.map((testCase) => (
+        <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
+      ))}
+      {edges.length > 0 ? (
+        <li>
+          <span className="font-semibold text-slate-50">Edge cases</span>
+          <ul className="mt-2 list-[circle] space-y-3 pl-5 marker:text-slate-300">
+            {edges.map((testCase) => (
+              <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
+            ))}
+          </ul>
+        </li>
+      ) : null}
+      </ul>
+    </div>
+  );
+}
+
 function ChatBubble({
   message,
-  running,
+  runs,
+  sessions,
+  conversationId,
+  runningCaseId,
   onRunTest,
+  onViewCase,
 }: {
   message: ChatMessage;
-  running: boolean;
-  onRunTest: (cdpStepsId: string) => void;
+  runs: ConversationSummary["cdp_runs"];
+  sessions: RunSession[];
+  conversationId: string | null;
+  runningCaseId: string | null;
+  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onViewCase: (caseId: string) => void;
 }) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
@@ -665,23 +975,35 @@ function ChatBubble({
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.text}</p>
+        ) : message.suite ? (
+          <SuiteReply
+            suite={message.suite}
+            responseId={message.id}
+            runs={runs}
+            sessions={sessions}
+            conversationId={conversationId}
+            runningCaseId={runningCaseId}
+            onRunTest={onRunTest}
+            onViewCase={onViewCase}
+          />
         ) : (
           <FormattedAiText text={message.text} />
         )}
-        {message.cdpStepsId ? (
-          <button
-            type="button"
-            onClick={() => onRunTest(message.cdpStepsId!)}
-            disabled={running}
-            className={`${tursorPrimaryButtonClassName} mt-2`}
-          >
-            {running ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <Play className="h-3.5 w-3.5" aria-hidden />
-            )}
-            {running ? "Starting…" : "Run Test"}
-          </button>
+        {!isUser && !message.suite && message.cdpStepsId ? (
+          <CaseRunButton
+            testCase={{
+              id: message.cdpStepsId,
+              kind: "success",
+              title: "Test",
+              explanation: "",
+            }}
+            responseId={message.id}
+            feature=""
+            finished={caseWasRun(runs, sessions, conversationId, message.cdpStepsId)}
+            runningCaseId={runningCaseId}
+            onRunTest={onRunTest}
+            onViewCase={onViewCase}
+          />
         ) : null}
         {message.status === "failed" ? (
           <p className="mt-1 text-[10px] text-red-400/90">Failed to send</p>

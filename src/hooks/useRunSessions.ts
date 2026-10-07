@@ -76,7 +76,15 @@ export function useRunSessions() {
   const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
   const screenshots = currentSession?.screenshots ?? [];
 
-  const startNewSession = useCallback((conversationId?: string | null) => {
+  const startNewSession = useCallback((
+    conversationId?: string | null,
+    caseMeta?: {
+      caseId?: string | null;
+      responseId?: string | null;
+      feature?: string | null;
+      caseTitle?: string | null;
+    },
+  ) => {
     const id = createRunSessionId();
     const session: RunSession = {
       id,
@@ -84,6 +92,10 @@ export function useRunSessions() {
       screenshots: [],
       status: "running",
       conversationId: conversationId ?? null,
+      caseId: caseMeta?.caseId ?? null,
+      responseId: caseMeta?.responseId ?? null,
+      feature: caseMeta?.feature ?? null,
+      caseTitle: caseMeta?.caseTitle ?? null,
     };
     setSessions((prev) => {
       const closed = prev.map((s) =>

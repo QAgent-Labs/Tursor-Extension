@@ -13,16 +13,16 @@ type InnerProps = {
 function RunStatusPill({ status }: { status: RunSessionStatus }) {
   if (status === "success") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-200 shadow-lg shadow-black/30">
-        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-black shadow-lg shadow-black/30">
+        <CheckCircle2 className="h-3.5 w-3.5 text-black" aria-hidden />
         Success
       </span>
     );
   }
   if (status === "fail") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2.5 py-1 text-[11px] font-medium text-red-200 shadow-lg shadow-black/30">
-        <XCircle className="h-3.5 w-3.5" aria-hidden />
+      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2.5 py-1 text-[11px] font-medium text-black shadow-lg shadow-black/30">
+        <XCircle className="h-3.5 w-3.5 text-black" aria-hidden />
         Failure
       </span>
     );
@@ -31,7 +31,7 @@ function RunStatusPill({ status }: { status: RunSessionStatus }) {
 }
 
 function ScreenshotCarouselInner({ urls, status }: InnerProps) {
-  const [index, setIndex] = useState(() => Math.max(0, urls.length - 1));
+  const [index, setIndex] = useState(0);
   const previousLength = useRef(urls.length);
   const safeIndex = Math.min(index, Math.max(0, urls.length - 1));
   const url = urls[safeIndex]!;

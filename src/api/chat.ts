@@ -1,23 +1,51 @@
 export type CdpRunStatus = "passed" | "failure";
 
+export type SuiteCaseKind = "success" | "failure" | "edge";
+
 export type CdpRunRecord = {
   cdp_step_id: string;
+  case_id: string;
   status: CdpRunStatus;
   status_message: string;
   screenshots: string[];
+  response_id: string;
+  feature: string;
+  title: string;
+  kind: SuiteCaseKind | "";
+};
+
+export type SummaryPlan = {
+  id: string;
+  title: string;
+  response_id: string;
+  feature: string;
+  kind: SuiteCaseKind | "";
 };
 
 export type ConversationSummary = {
   case: string;
   brief_summary: string;
-  plans: { id: string; title: string }[];
+  plans: SummaryPlan[];
   cdp_runs: CdpRunRecord[];
+};
+
+export type SuiteCaseView = {
+  id: string;
+  kind: SuiteCaseKind;
+  title: string;
+  explanation: string;
+};
+
+export type ChatSuite = {
+  feature: string;
+  cases: SuiteCaseView[];
 };
 
 export type ChatTurn = {
   conversationId: string;
+  responseId: string;
   reply: string;
-  cdpStepsId: string | null;
+  suite: ChatSuite | null;
   summary: ConversationSummary;
 };
 
@@ -32,7 +60,7 @@ export type StoredMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  metadata?: { cdpStepsId?: string | null };
+  metadata?: Record<string, unknown>;
   createdAt: string;
 };
 
@@ -43,6 +71,43 @@ const emptySummary = (): ConversationSummary => ({
   cdp_runs: [],
 });
 
+function asKind(value: unknown): SuiteCaseKind | "" {
+  if (value === "success" || value === "failure" || value === "edge") {
+    return value;
+  }
+  return "";
+}
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+export function suiteFromMetadata(metadata: unknown): ChatSuite | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const data = metadata as { feature?: unknown; cases?: unknown };
+  if (!Array.isArray(data.cases)) return null;
+  const cases: SuiteCaseView[] = [];
+  for (const item of data.cases) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as {
+      id?: unknown;
+      kind?: unknown;
+      title?: unknown;
+      explanation?: unknown;
+    };
+    const kind = asKind(row.kind);
+    if (!kind || typeof row.id !== "string" || !row.id) continue;
+    cases.push({
+      id: row.id,
+      kind,
+      title: asText(row.title) || "Test case",
+      explanation: asText(row.explanation),
+    });
+  }
+  if (cases.length === 0) return null;
+  return { feature: asText(data.feature), cases };
+}
+
 function asSummary(raw: unknown): ConversationSummary {
   if (!raw || typeof raw !== "object") return emptySummary();
   const data = raw as {
@@ -51,41 +116,61 @@ function asSummary(raw: unknown): ConversationSummary {
     plans?: unknown;
     cdp_runs?: unknown;
   };
-  const plans = Array.isArray(data.plans)
-    ? data.plans.flatMap((item) => {
-        if (!item || typeof item !== "object") return [];
-        const plan = item as { id?: unknown; title?: unknown };
-        if (typeof plan.id !== "string" || !plan.id) return [];
-        return [
-          {
-            id: plan.id,
-            title: typeof plan.title === "string" ? plan.title : "",
-          },
-        ];
-      })
-    : [];
+  const plans: SummaryPlan[] = [];
+  if (Array.isArray(data.plans)) {
+    for (const item of data.plans) {
+      if (!item || typeof item !== "object") continue;
+      const plan = item as {
+        id?: unknown;
+        title?: unknown;
+        response_id?: unknown;
+        feature?: unknown;
+        kind?: unknown;
+      };
+      if (typeof plan.id !== "string" || !plan.id) continue;
+      plans.push({
+        id: plan.id,
+        title: asText(plan.title),
+        response_id: asText(plan.response_id),
+        feature: asText(plan.feature),
+        kind: asKind(plan.kind),
+      });
+    }
+  }
   const cdpRuns: CdpRunRecord[] = [];
   if (Array.isArray(data.cdp_runs)) {
     for (const item of data.cdp_runs) {
       if (!item || typeof item !== "object") continue;
       const run = item as {
         cdp_step_id?: unknown;
+        case_id?: unknown;
         status?: unknown;
         status_message?: unknown;
         screenshots?: unknown;
+        response_id?: unknown;
+        feature?: unknown;
+        title?: unknown;
+        kind?: unknown;
       };
       if (typeof run.cdp_step_id !== "string" || !run.cdp_step_id) continue;
       if (run.status !== "passed" && run.status !== "failure") continue;
       cdpRuns.push({
         cdp_step_id: run.cdp_step_id,
+        case_id:
+          typeof run.case_id === "string" && run.case_id
+            ? run.case_id
+            : run.cdp_step_id,
         status: run.status,
-        status_message:
-          typeof run.status_message === "string" ? run.status_message : "",
+        status_message: asText(run.status_message),
         screenshots: Array.isArray(run.screenshots)
           ? run.screenshots.filter(
               (url): url is string => typeof url === "string" && url.length > 0,
             )
           : [],
+        response_id: asText(run.response_id),
+        feature: asText(run.feature),
+        title: asText(run.title),
+        kind: asKind(run.kind),
       });
     }
   }
@@ -135,11 +220,16 @@ async function postJson<T>(
   });
 }
 
+function asSuite(raw: unknown): ChatSuite | null {
+  return suiteFromMetadata(raw);
+}
+
 function asChatTurn(raw: ChatTurn): ChatTurn {
   return {
     conversationId: raw.conversationId,
+    responseId: raw.responseId ?? "",
     reply: raw.reply ?? "",
-    cdpStepsId: raw.cdpStepsId ?? null,
+    suite: asSuite(raw.suite),
     summary: asSummary(raw.summary),
   };
 }

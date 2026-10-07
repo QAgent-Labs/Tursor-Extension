@@ -6,6 +6,10 @@ export type RunSession = {
   screenshots: string[];
   status: RunSessionStatus;
   conversationId?: string | null;
+  caseId?: string | null;
+  responseId?: string | null;
+  feature?: string | null;
+  caseTitle?: string | null;
 };
 
 export function createRunSessionId(): string {

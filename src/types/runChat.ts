@@ -1,3 +1,5 @@
+import type { ChatSuite } from "../api/chat";
+
 export type ChatMessageRole = "user" | "assistant" | "system";
 
 export type ChatMessage = {
@@ -6,6 +8,7 @@ export type ChatMessage = {
   text: string;
   timestamp: number;
   status?: "sending" | "sent" | "failed";
+  suite?: ChatSuite | null;
   cdpStepsId?: string | null;
 };
 

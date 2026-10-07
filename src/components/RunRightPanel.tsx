@@ -1,20 +1,24 @@
 import { useState } from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
-import { ScreenshotCarousel } from "./ScreenshotCarousel";
+import { RunsGallery, type RunsPreview } from "./RunsGallery";
 import { RunLogsPanel } from "./RunLogsPanel";
 import { TursorPathText } from "./TursorPathText";
 import { tursorSecondaryButtonClassName } from "./tursorButtonClasses";
-import { shortSessionId, type RunSessionStatus } from "../types/runHistory";
+import type { SuiteGroup } from "../runs/suiteGroups";
 import type { ContextPanelPhase } from "../types/runChat";
 import type { RunLogEntry } from "../types/runLogs";
 
 type Props = {
+  conversationId: string | null;
   phase: ContextPanelPhase;
   errorMessage: string | null;
-  screenshots: string[];
-  sessionKey?: string | null;
-  runStatus?: RunSessionStatus | null;
-  historySessionId?: string | null;
+  groups: SuiteGroup[];
+  highlightedCaseId: string | null;
+  highlightToken: number;
+  liveRunKey: string | null;
+  liveCaseId: string | null;
+  preview: RunsPreview | null;
+  onClosePreview: () => void;
   logs: RunLogEntry[];
   onClearLogs?: () => void;
   onRetry: () => void;
@@ -22,19 +26,23 @@ type Props = {
 };
 
 export function RunRightPanel({
+  conversationId,
   phase,
   errorMessage,
-  screenshots,
-  sessionKey,
-  runStatus,
-  historySessionId,
+  groups,
+  highlightedCaseId,
+  highlightToken,
+  liveRunKey,
+  liveCaseId,
+  preview,
+  onClosePreview,
   logs,
   onClearLogs,
   onRetry,
   isRunning,
 }: Props) {
   const [logsExpanded, setLogsExpanded] = useState(true);
-  const isHistoryView = Boolean(historySessionId);
+  const isHistoryView = preview != null;
   const isMissing = phase === "missing_config";
   const isError = phase === "error";
   const isBuilding = phase === "building";
@@ -42,33 +50,17 @@ export function RunRightPanel({
 
   const screenshotsSection = (
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="mb-3 shrink-0 text-left">
-        <h2 className="text-xl font-semibold text-white sm:text-2xl">
-          Screenshots
-        </h2>
-        {isHistoryView && historySessionId ? (
-          <p className="mt-1 text-sm text-amber-300/90">
-            History · Session{" "}
-            <span className="font-mono font-medium text-amber-200">
-              #{shortSessionId(historySessionId)}
-            </span>
-          </p>
-        ) : (
-          <p className="mt-1 text-sm text-slate-500">
-            Live captures from the agent run in order — use arrows to browse.
-          </p>
-        )}
-      </header>
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <div className="flex h-full w-full items-center justify-center">
-          <div className="aspect-video max-h-full w-full max-w-full overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
-            <ScreenshotCarousel
-              urls={screenshots}
-              sessionKey={sessionKey}
-              status={runStatus}
-            />
-          </div>
-        </div>
+        <RunsGallery
+          conversationId={conversationId}
+          groups={groups}
+          highlightedCaseId={highlightedCaseId}
+          highlightToken={highlightToken}
+          liveRunKey={liveRunKey}
+          liveCaseId={liveCaseId}
+          preview={preview}
+          onClosePreview={onClosePreview}
+        />
         {showErrorOverlay ? (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-amber-500/30 bg-slate-950/85 px-6 py-8 text-center backdrop-blur-sm">
             <div className="max-w-lg">
@@ -97,7 +89,7 @@ export function RunRightPanel({
             </div>
           </div>
         ) : null}
-        {isBuilding && !isHistoryView && !showErrorOverlay ? (
+        {isBuilding && groups.length === 0 && !isHistoryView && !showErrorOverlay ? (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-cyan-500/30 bg-slate-950/85 px-6 py-8 text-center backdrop-blur-sm">
             <div className="max-w-lg">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-cyan-400" />
