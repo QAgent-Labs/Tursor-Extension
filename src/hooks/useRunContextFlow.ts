@@ -8,6 +8,7 @@ import {
 } from "../workspaceInit";
 import {
   parseContextBuilding,
+  parseFeatureMapBuilding,
   parseContextError,
   parseContextReady,
   parseScreenshotUrl,
@@ -103,6 +104,12 @@ export function useRunContextFlow({
     return subscribe((data) => {
       if (parseContextBuilding(data)) {
         setPhase("building");
+        setErrorMessage(null);
+        return;
+      }
+
+      if (parseFeatureMapBuilding(data)) {
+        setPhase("mapping");
         setErrorMessage(null);
         return;
       }

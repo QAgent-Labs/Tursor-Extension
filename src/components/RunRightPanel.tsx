@@ -45,7 +45,8 @@ export function RunRightPanel({
   const isHistoryView = preview != null;
   const isMissing = phase === "missing_config";
   const isError = phase === "error";
-  const isBuilding = phase === "building";
+  const isBuilding = phase === "building" || phase === "mapping";
+  const isMapping = phase === "mapping";
   const showErrorOverlay = !isHistoryView && (isMissing || isError);
 
   const screenshotsSection = (
@@ -94,11 +95,12 @@ export function RunRightPanel({
             <div className="max-w-lg">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-cyan-400" />
               <h3 className="mt-4 text-lg font-semibold text-white sm:text-xl">
-                Creating code context
+                {isMapping ? "Building the feature map" : "Creating code context"}
               </h3>
               <p className="mt-3 text-sm text-slate-400">
-                Workspace embeddings are being built. Please wait before running
-                tests.
+                {isMapping
+                  ? "Features are being read from the indexed code. Please wait before running tests."
+                  : "Workspace embeddings are being built. Please wait before running tests."}
               </p>
             </div>
           </div>

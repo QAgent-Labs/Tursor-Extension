@@ -80,6 +80,7 @@ function mergeRuns(server: CdpRunRecord[], local: CdpRunRecord[]): CdpRunRecord[
 type Props = {
   backendOrigin: string | null;
   workspacePath: string | null;
+  contextReady: boolean;
   runs: RunSession[];
   selectedRunId: string | null;
   onConversationChange?: (conversationId: string | null) => void;
@@ -102,6 +103,7 @@ function createId(prefix: string): string {
 export function RunChatPanel({
   backendOrigin,
   workspacePath,
+  contextReady,
   runs,
   selectedRunId,
   onConversationChange,
@@ -213,7 +215,7 @@ export function RunChatPanel({
   }, [draft]);
 
   useEffect(() => {
-    if (!connected || !backendOrigin || !workspacePath) {
+    if (!contextReady || !connected || !backendOrigin || !workspacePath) {
       return;
     }
     if (startedSession.current === chatSession && conversationId) {
@@ -255,7 +257,14 @@ export function RunChatPanel({
     return () => {
       cancelled = true;
     };
-  }, [connected, backendOrigin, workspacePath, chatSession, conversationId]);
+  }, [
+    contextReady,
+    connected,
+    backendOrigin,
+    workspacePath,
+    chatSession,
+    conversationId,
+  ]);
 
   const startNewConversation = () => {
     if (!connected || !backendOrigin || !workspacePath) return;
@@ -863,8 +872,14 @@ function SuiteCaseBlock({
   );
 }
 
+function suiteOverview(text: string, fallback: string): string {
+  const first = text.split(/\n\s*\n/)[0]?.trim() ?? "";
+  return first || fallback;
+}
+
 function SuiteReply({
   suite,
+  overview,
   responseId,
   runs,
   sessions,
@@ -874,6 +889,7 @@ function SuiteReply({
   onViewCase,
 }: {
   suite: ChatSuite;
+  overview: string;
   responseId: string;
   runs: ConversationSummary["cdp_runs"];
   sessions: RunSession[];
@@ -897,12 +913,13 @@ function SuiteReply({
   };
   const feature = suite.feature.trim() || "this feature";
   const onlyCase = suite.cases.length === 1 ? suite.cases[0] : null;
-  const intro = onlyCase
+  const fallback = onlyCase
     ? `For ${feature}, here is the ${onlyCase.title}.`
     : `For ${feature}, here is the test suite generated.`;
+  const intro = suiteOverview(overview, fallback);
   return (
     <div className="flex flex-col gap-3">
-      <p>{intro}</p>
+      <p className="whitespace-pre-wrap">{intro}</p>
       <ul className="list-disc space-y-3 pl-5 marker:text-slate-200">
       {success.map((testCase) => (
         <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
@@ -978,6 +995,7 @@ function ChatBubble({
         ) : message.suite ? (
           <SuiteReply
             suite={message.suite}
+            overview={message.text}
             responseId={message.id}
             runs={runs}
             sessions={sessions}

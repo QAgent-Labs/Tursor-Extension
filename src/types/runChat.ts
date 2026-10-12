@@ -67,6 +67,7 @@ export function parseScreenshotUrl(data: unknown): string | null {
 
 export type ContextPanelPhase =
   | "building"
+  | "mapping"
   | "ready"
   | "missing_config"
   | "error"
@@ -74,6 +75,10 @@ export type ContextPanelPhase =
 
 export function parseContextBuilding(data: unknown): boolean {
   return isRecord(data) && data.type === "context_building";
+}
+
+export function parseFeatureMapBuilding(data: unknown): boolean {
+  return isRecord(data) && data.type === "feature_map_building";
 }
 
 export function parseContextReady(data: unknown): boolean {

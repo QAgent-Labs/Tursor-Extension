@@ -155,6 +155,7 @@ export default function RunPage() {
         <RunChatPanel
           backendOrigin={backendOrigin}
           workspacePath={resolvedWorkspacePath || config.workspacePath}
+          contextReady={phase === "ready"}
           runs={sessions}
           selectedRunId={shotPreview?.key ?? null}
           onConversationChange={handleConversationChange}
