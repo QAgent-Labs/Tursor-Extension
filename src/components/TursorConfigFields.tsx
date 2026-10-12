@@ -1,6 +1,6 @@
-import { FolderOpen } from "lucide-react";
-import { formatWorkspacePathForDisplay } from "../api/tursorContext";
-import { useWorkspaceFolderPicker } from "../hooks/useWorkspaceFolderPicker";
+import { FolderOpen } from 'lucide-react';
+import { formatWorkspacePathForDisplay } from '../api/tursorContext';
+import { useWorkspaceFolderPicker } from '../hooks/useWorkspaceFolderPicker';
 
 export type TursorConfigFieldsProps = {
   workspacePath: string | null;
@@ -19,7 +19,7 @@ export type TursorConfigFieldsProps = {
 export function TursorConfigFields({
   workspacePath,
   backendPort,
-  frontendPort = "",
+  frontendPort = '',
   onWorkspacePathChange,
   onBackendPortChange,
   onFrontendPortChange,
@@ -46,7 +46,7 @@ export function TursorConfigFields({
           <span className="min-w-0 flex-1 truncate font-mono text-xs text-slate-200">
             {workspacePath
               ? formatWorkspacePathForDisplay(workspacePath)
-              : "Loading workspace…"}
+              : 'Loading workspace…'}
           </span>
         </button>
         <p className="mt-1 text-[11px] text-slate-500">
@@ -60,7 +60,7 @@ export function TursorConfigFields({
         </dt>
         {backendPortReadOnly ? (
           <p className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-xs text-slate-300">
-            {backendPort.trim() || "Detecting…"}
+            {backendPort.trim() || 'Detecting…'}
           </p>
         ) : (
           <input

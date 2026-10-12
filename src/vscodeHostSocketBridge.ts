@@ -6,37 +6,37 @@
 
 export type TursorSocketHostToWebview =
   | {
-      type: "tursorSocket";
-      event: "connected";
+      type: 'tursorSocket';
+      event: 'connected';
       socketId?: string | null;
       transport?: string | null;
       workspacePath?: string | null;
     }
   | {
-      type: "tursorSocket";
-      event: "workspaceContext";
+      type: 'tursorSocket';
+      event: 'workspaceContext';
       workspacePath: string;
     }
   | {
-      type: "tursorSocket";
-      event: "connect_error";
+      type: 'tursorSocket';
+      event: 'connect_error';
       message: string;
       detail?: string;
     }
-  | { type: "tursorSocket"; event: "disconnected"; reason?: string }
+  | { type: 'tursorSocket'; event: 'disconnected'; reason?: string }
   | {
-      type: "tursorSocket";
-      event: "socket_error";
+      type: 'tursorSocket';
+      event: 'socket_error';
       message: string;
     }
-  | { type: "tursorSocket"; event: "serverMessage"; payload: unknown };
+  | { type: 'tursorSocket'; event: 'serverMessage'; payload: unknown };
 
 export function isTursorSocketHostMessage(
   data: unknown,
 ): data is TursorSocketHostToWebview {
-  if (typeof data !== "object" || data === null) return false;
+  if (typeof data !== 'object' || data === null) return false;
   const d = data as Record<string, unknown>;
-  return d.type === "tursorSocket" && typeof d.event === "string";
+  return d.type === 'tursorSocket' && typeof d.event === 'string';
 }
 
 let tapAttached = false;
@@ -50,9 +50,9 @@ export function setHostSocketBridgeHandler(
 
 /** Call once when the webview API exists (before any child connect() effects). */
 export function ensureHostSocketBridgeTap(): void {
-  if (typeof window === "undefined" || tapAttached) return;
+  if (typeof window === 'undefined' || tapAttached) return;
   tapAttached = true;
-  window.addEventListener("message", (event: MessageEvent) => {
+  window.addEventListener('message', (event: MessageEvent) => {
     const data = event.data;
     if (!isTursorSocketHostMessage(data)) return;
     handler?.(data);

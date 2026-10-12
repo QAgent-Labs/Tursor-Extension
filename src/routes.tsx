@@ -1,8 +1,8 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import HomePage from "./pages/HomePage";
-import ErrorPage from "./pages/ErroPage";
-import InitialSetupPage from "./pages/InitialSetupPage";
-import RunPage from "./pages/RunPage";
+import { Navigate, Route, Routes } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import ErrorPage from './pages/ErroPage';
+import InitialSetupPage from './pages/InitialSetupPage';
+import RunPage from './pages/RunPage';
 
 export default function AppRoutes() {
   return (

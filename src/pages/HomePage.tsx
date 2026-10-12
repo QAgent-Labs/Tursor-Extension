@@ -1,10 +1,10 @@
-import { AnimatedBackground } from "../components/AnimatedBackground";
-import { WelcomeFeatures } from "../components/home/WelcomeFeatures";
-import { TursorLogo } from "../components/TursorLogo";
-import { tursorPrimaryButtonClassName } from "../components/tursorButtonClasses";
-import { motion } from "motion/react";
-import { Rocket } from "lucide-react";
-import { useNavigate } from "react-router";
+import { AnimatedBackground } from '../components/AnimatedBackground';
+import { WelcomeFeatures } from '../components/home/WelcomeFeatures';
+import { TursorLogo } from '../components/TursorLogo';
+import { tursorPrimaryButtonClassName } from '../components/tursorButtonClasses';
+import { motion } from 'motion/react';
+import { Rocket } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 const PAGE_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -24,7 +24,7 @@ export default function HomePage() {
         {/* Logo row */}
         <motion.div
           animate={{ y: [0, -2, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           className="mb-8 flex items-center justify-center gap-2 sm:mb-10"
         >
           <TursorLogo className="h-24 w-24 object-contain" />
@@ -82,10 +82,10 @@ export default function HomePage() {
           transition={{ delay: 0.45, duration: 0.55, ease: PAGE_EASE }}
           whileHover={{
             scale: 1.01,
-            boxShadow: "0 20px 60px rgba(99,102,241,0.36)",
+            boxShadow: '0 20px 60px rgba(99,102,241,0.36)',
           }}
           whileTap={{ scale: 0.995 }}
-          onClick={() => navigate("/initial-setup")}
+          onClick={() => navigate('/initial-setup')}
           className={`group relative mt-12 w-full max-w-xs sm:mt-14 sm:max-w-sm ${tursorPrimaryButtonClassName}`}
         >
           <Rocket className="h-6 w-6 sm:h-6 sm:w-6" aria-hidden />

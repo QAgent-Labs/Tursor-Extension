@@ -1,95 +1,96 @@
-import type { ChatSuite } from "../api/chat";
+import type { ChatSuite } from '../api/chat';
 
-export type ChatMessageRole = "user" | "assistant" | "system";
+export type ChatMessageRole = 'user' | 'assistant' | 'system';
 
 export type ChatMessage = {
   id: string;
   role: ChatMessageRole;
   text: string;
   timestamp: number;
-  status?: "sending" | "sent" | "failed";
+  status?: 'sending' | 'sent' | 'failed';
   suite?: ChatSuite | null;
   cdpStepsId?: string | null;
 };
 
 export type UserMessageOutbound = {
-  type: "user_message";
+  type: 'user_message';
   id: string;
   text: string;
 };
 
 export type ChatInbound = {
-  type: "chat";
+  type: 'chat';
   id: string;
-  role: "assistant";
+  role: 'assistant';
   text: string;
   replyTo?: string;
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null;
+  return typeof v === 'object' && v !== null;
 }
 
 export function parseServerChatEvent(data: unknown): ChatInbound | null {
-  if (!isRecord(data) || data.type !== "chat") return null;
-  if (typeof data.id !== "string" || typeof data.text !== "string") return null;
-  if (data.role !== "assistant") return null;
+  if (!isRecord(data) || data.type !== 'chat') return null;
+  if (typeof data.id !== 'string' || typeof data.text !== 'string') return null;
+  if (data.role !== 'assistant') return null;
   return {
-    type: "chat",
+    type: 'chat',
     id: data.id,
-    role: "assistant",
+    role: 'assistant',
     text: data.text,
-    replyTo: typeof data.replyTo === "string" ? data.replyTo : undefined,
+    replyTo: typeof data.replyTo === 'string' ? data.replyTo : undefined,
   };
 }
 
 export function parseLogLine(data: unknown): string | null {
-  if (!isRecord(data) || data.type !== "log") return null;
-  return typeof data.message === "string" ? data.message : null;
+  if (!isRecord(data) || data.type !== 'log') return null;
+  return typeof data.message === 'string' ? data.message : null;
 }
 
 export function parseStepUpdate(data: unknown): string | null {
-  if (!isRecord(data) || data.type !== "step_update") return null;
-  const step = typeof data.step === "string" ? data.step : "step";
+  if (!isRecord(data) || data.type !== 'step_update') return null;
+  const step = typeof data.step === 'string' ? data.step : 'step';
   return `Running: ${step}`;
 }
 
 export function parseComplete(data: unknown): string | null {
-  if (!isRecord(data) || data.type !== "complete") return null;
-  const s = data.status === "success" ? "success" : "failed";
+  if (!isRecord(data) || data.type !== 'complete') return null;
+  const s = data.status === 'success' ? 'success' : 'failed';
   return `Run finished (${s}).`;
 }
 
 export function parseScreenshotUrl(data: unknown): string | null {
-  if (!isRecord(data) || data.type !== "screenshot") return null;
-  return typeof data.url === "string" ? data.url : null;
+  if (!isRecord(data) || data.type !== 'screenshot') return null;
+  return typeof data.url === 'string' ? data.url : null;
 }
 
 export type ContextPanelPhase =
-  | "building"
-  | "mapping"
-  | "ready"
-  | "missing_config"
-  | "error"
-  | "idle";
+  | 'building'
+  | 'mapping'
+  | 'ready'
+  | 'missing_config'
+  | 'error'
+  | 'idle';
 
 export function parseContextBuilding(data: unknown): boolean {
-  return isRecord(data) && data.type === "context_building";
+  return isRecord(data) && data.type === 'context_building';
 }
 
 export function parseFeatureMapBuilding(data: unknown): boolean {
-  return isRecord(data) && data.type === "feature_map_building";
+  return isRecord(data) && data.type === 'feature_map_building';
 }
 
 export function parseContextReady(data: unknown): boolean {
-  return isRecord(data) && data.type === "context_ready";
+  return isRecord(data) && data.type === 'context_ready';
 }
 
 export function parseContextError(
   data: unknown,
 ): { code: string; message: string } | null {
-  if (!isRecord(data) || data.type !== "context_error") return null;
-  const message = typeof data.message === "string" ? data.message : "Unknown error";
-  const code = typeof data.code === "string" ? data.code : "error";
+  if (!isRecord(data) || data.type !== 'context_error') return null;
+  const message =
+    typeof data.message === 'string' ? data.message : 'Unknown error';
+  const code = typeof data.code === 'string' ? data.code : 'error';
   return { code, message };
 }

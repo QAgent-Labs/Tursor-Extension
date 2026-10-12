@@ -4,7 +4,7 @@ import type {
   StartContextMessage,
   StartCdpMessage,
   WorkspaceInitMessage,
-} from "./types/workspaceInit";
+} from './types/workspaceInit';
 
 export type WorkspaceInitSources = {
   workspacePath?: string | null;
@@ -15,9 +15,9 @@ export type WorkspaceInitSources = {
 export function buildWorkspaceInit(
   sources: WorkspaceInitSources,
 ): WorkspaceInitMessage | null {
-  const workspacePath = (sources.workspacePath?.trim() ?? "").trim();
+  const workspacePath = (sources.workspacePath?.trim() ?? '').trim();
   if (!workspacePath) return null;
-  const msg: WorkspaceInitMessage = { type: "workspace_init", workspacePath };
+  const msg: WorkspaceInitMessage = { type: 'workspace_init', workspacePath };
   if (sources.frontendPort != null && sources.frontendPort > 0) {
     msg.frontendPort = sources.frontendPort;
   }
@@ -35,7 +35,7 @@ export function emitWorkspaceInit(
 export function buildSessionConfig(
   sources: WorkspaceInitSources,
 ): SessionConfigMessage {
-  const msg: SessionConfigMessage = { type: "session_config" };
+  const msg: SessionConfigMessage = { type: 'session_config' };
   const wp = sources.workspacePath?.trim();
   if (wp) msg.workspacePath = wp;
   if (sources.frontendPort != null && sources.frontendPort > 0) {
@@ -45,13 +45,13 @@ export function buildSessionConfig(
 }
 
 export function startContextMessage(): StartContextMessage {
-  return { type: "start_context" };
+  return { type: 'start_context' };
 }
 
 export function revalidateContextMessage(): RevalidateContextMessage {
-  return { type: "revalidate_context" };
+  return { type: 'revalidate_context' };
 }
 
 export function startCdpMessage(): StartCdpMessage {
-  return { type: "start_cdp" };
+  return { type: 'start_cdp' };
 }

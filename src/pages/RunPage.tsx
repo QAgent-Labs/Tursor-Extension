@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatedBackground } from "../components/AnimatedBackground";
-import { Settings } from "lucide-react";
-import { RunSettingsSheet } from "../components/RunSettingsSheet";
-import { RunChatPanel } from "../components/RunChatPanel";
-import type { HistoryRunSelection } from "../components/ConversationHistoryList";
-import { RunRightPanel } from "../components/RunRightPanel";
-import type { ConversationSummary } from "../api/chat";
-import { buildSuiteGroups } from "../runs/suiteGroups";
-import { tursorSecondaryIconButtonClassName } from "../components/tursorButtonClasses";
-import { useRunContextFlow } from "../hooks/useRunContextFlow";
-import { useRunLogs } from "../hooks/useRunLogs";
-import { useRunSessions } from "../hooks/useRunSessions";
-import { useEnsureBackendConnection } from "../hooks/useEnsureBackendConnection";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatedBackground } from '../components/AnimatedBackground';
+import { Settings } from 'lucide-react';
+import { RunSettingsSheet } from '../components/RunSettingsSheet';
+import { RunChatPanel } from '../components/RunChatPanel';
+import type { HistoryRunSelection } from '../components/ConversationHistoryList';
+import { RunRightPanel } from '../components/RunRightPanel';
+import type { ConversationSummary } from '../api/chat';
+import { buildSuiteGroups } from '../runs/suiteGroups';
+import { tursorSecondaryIconButtonClassName } from '../components/tursorButtonClasses';
+import { useRunContextFlow } from '../hooks/useRunContextFlow';
+import { useRunLogs } from '../hooks/useRunLogs';
+import { useRunSessions } from '../hooks/useRunSessions';
+import { useEnsureBackendConnection } from '../hooks/useEnsureBackendConnection';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
 
 export default function RunPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -41,14 +41,17 @@ export default function RunPage() {
   useEnsureBackendConnection();
 
   const activeConversationRef = useRef<string | null>(null);
-  const handleConversationChange = useCallback((conversationId: string | null) => {
-    if (activeConversationRef.current !== conversationId) {
-      setShotPreview(null);
-      setHighlight(null);
-    }
-    activeConversationRef.current = conversationId;
-    setActiveConversationId(conversationId);
-  }, []);
+  const handleConversationChange = useCallback(
+    (conversationId: string | null) => {
+      if (activeConversationRef.current !== conversationId) {
+        setShotPreview(null);
+        setHighlight(null);
+      }
+      activeConversationRef.current = conversationId;
+      setActiveConversationId(conversationId);
+    },
+    [],
+  );
 
   const handleRunStart = useCallback(
     (conversationId?: string | null) => {
@@ -118,15 +121,15 @@ export default function RunPage() {
       if (cell?.contains(target)) return;
       setHighlight(null);
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [highlight]);
 
   const failChatRun = useCallback(() => {
-    completeCurrentSession("fail");
+    completeCurrentSession('fail');
   }, [completeCurrentSession]);
 
-  const hasActiveSession = sessions.some((s) => s.status === "running");
+  const hasActiveSession = sessions.some((s) => s.status === 'running');
 
   useEffect(() => {
     if (!hasActiveSession) {
@@ -137,7 +140,7 @@ export default function RunPage() {
   const liveSession =
     sessions.find(
       (session) =>
-        session.status === "running" &&
+        session.status === 'running' &&
         session.conversationId === activeConversationId &&
         session.caseId,
     ) ?? null;
@@ -155,7 +158,7 @@ export default function RunPage() {
         <RunChatPanel
           backendOrigin={backendOrigin}
           workspacePath={resolvedWorkspacePath || config.workspacePath}
-          contextReady={phase === "ready"}
+          contextReady={phase === 'ready'}
           runs={sessions}
           selectedRunId={shotPreview?.key ?? null}
           onConversationChange={handleConversationChange}
@@ -195,7 +198,7 @@ export default function RunPage() {
                 shotPreview
                   ? {
                       key: shotPreview.key,
-                      title: shotPreview.title || "Test case",
+                      title: shotPreview.title || 'Test case',
                       screenshots: shotPreview.screenshots,
                       status: shotPreview.status,
                     }

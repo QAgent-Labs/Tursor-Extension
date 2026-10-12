@@ -1,6 +1,6 @@
 /** Raw gradient + clip (safe on flex buttons; box may span full width). */
 const tursorWordmarkGradientCore =
-  "bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent";
+  'bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent';
 
 /**
  * Gradient fill only — same colors as `TursorHeader.tsx` uses on controls.

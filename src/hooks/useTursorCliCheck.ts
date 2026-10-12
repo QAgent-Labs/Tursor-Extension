@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { getVsCodeApi } from "../vscodeApi";
-import { isBrowserMockRuntime } from "../appRuntime";
-import { DEFAULT_BACKEND_PORT } from "../constants/tursorConnection";
+import { useCallback, useEffect, useState } from 'react';
+import { getVsCodeApi } from '../vscodeApi';
+import { isBrowserMockRuntime } from '../appRuntime';
+import { DEFAULT_BACKEND_PORT } from '../constants/tursorConnection';
 
-export type TursorSetupPhase = "needs_install" | "needs_start" | "ready";
+export type TursorSetupPhase = 'needs_install' | 'needs_start' | 'ready';
 
 export type TursorCliCheckState = {
   phase: TursorSetupPhase;
@@ -20,8 +20,8 @@ async function probeHealth(port: number): Promise<TursorCliCheckState | null> {
     if (!res.ok) return null;
     const data = (await res.json()) as { port?: number };
     const resolved =
-      typeof data.port === "number" && data.port > 0 ? data.port : port;
-    return { phase: "ready", port: resolved };
+      typeof data.port === 'number' && data.port > 0 ? data.port : port;
+    return { phase: 'ready', port: resolved };
   } catch {
     return null;
   } finally {
@@ -33,7 +33,7 @@ function checkViaExtensionHost(): Promise<TursorCliCheckState> {
   return new Promise((resolve) => {
     const vscode = getVsCodeApi();
     if (!vscode) {
-      resolve({ phase: "needs_install", port: null });
+      resolve({ phase: 'needs_install', port: null });
       return;
     }
 
@@ -58,35 +58,35 @@ function checkViaExtensionHost(): Promise<TursorCliCheckState> {
         port?: number | null;
       };
       if (
-        data?.type !== "tursorCliCheckResult" ||
+        data?.type !== 'tursorCliCheckResult' ||
         data.requestId !== requestId
       ) {
         return;
       }
-      window.removeEventListener("message", onMsg);
+      window.removeEventListener('message', onMsg);
       const phase = data.phase;
       if (
-        phase === "needs_install" ||
-        phase === "needs_start" ||
-        phase === "ready"
+        phase === 'needs_install' ||
+        phase === 'needs_start' ||
+        phase === 'ready'
       ) {
         finish({
           phase,
           port:
-            typeof data.port === "number" && data.port > 0 ? data.port : null,
+            typeof data.port === 'number' && data.port > 0 ? data.port : null,
         });
         return;
       }
-      finish({ phase: "needs_install", port: null });
+      finish({ phase: 'needs_install', port: null });
     };
 
-    window.addEventListener("message", onMsg);
-    vscode.postMessage({ command: "checkTursorCli", requestId });
+    window.addEventListener('message', onMsg);
+    vscode.postMessage({ command: 'checkTursorCli', requestId });
 
     window.setTimeout(() => {
-      window.removeEventListener("message", onMsg);
+      window.removeEventListener('message', onMsg);
       void probeHealth(DEFAULT_BACKEND_PORT).then((health) => {
-        finish(health ?? { phase: "needs_install", port: null });
+        finish(health ?? { phase: 'needs_install', port: null });
       });
     }, 4_000);
   });
@@ -94,7 +94,7 @@ function checkViaExtensionHost(): Promise<TursorCliCheckState> {
 
 async function resolveCliState(): Promise<TursorCliCheckState> {
   if (isBrowserMockRuntime()) {
-    return { phase: "needs_install", port: null };
+    return { phase: 'needs_install', port: null };
   }
   return checkViaExtensionHost();
 }
@@ -102,7 +102,7 @@ async function resolveCliState(): Promise<TursorCliCheckState> {
 /** Runs health check + extension host CLI status when needed. */
 export function useTursorCliCheck() {
   const [state, setState] = useState<TursorCliCheckState>({
-    phase: "needs_install",
+    phase: 'needs_install',
     port: null,
   });
   const [checking, setChecking] = useState(true);

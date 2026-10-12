@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   applyInstallStatusPayload,
   createInitialStepMap,
   INSTALL_STEP_ORDER,
   type InstallHostToWebviewMessage,
   type StepVisualState,
-} from "../types/installStatus";
-import { getVsCodeApi } from "../vscodeApi";
-import { isBrowserMockRuntime } from "../appRuntime";
-import { runBrowserMockInstall } from "../browserMockInstall";
-import { useTursorCliCheck } from "./useTursorCliCheck";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
+} from '../types/installStatus';
+import { getVsCodeApi } from '../vscodeApi';
+import { isBrowserMockRuntime } from '../appRuntime';
+import { runBrowserMockInstall } from '../browserMockInstall';
+import { useTursorCliCheck } from './useTursorCliCheck';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
 
 function persistBackendPort(
   port: number,
@@ -31,8 +31,11 @@ export function useSetupFlow(options: Options = {}) {
   const { onAdvanceToConnect } = options;
   const navigate = useNavigate();
   const { setConfig, setBackendStatus } = useTursorAppConfig();
-  const { phase, checking: checkingCli, refresh: refreshCliCheck } =
-    useTursorCliCheck();
+  const {
+    phase,
+    checking: checkingCli,
+    refresh: refreshCliCheck,
+  } = useTursorCliCheck();
   const [installRunning, setInstallRunning] = useState(false);
   const [startRunning, setStartRunning] = useState(false);
   const [installSession, setInstallSession] = useState(0);
@@ -47,7 +50,7 @@ export function useSetupFlow(options: Options = {}) {
       onAdvanceToConnect();
       return;
     }
-    navigate("/initial-setup?step=connect");
+    navigate('/initial-setup?step=connect');
   }, [navigate, onAdvanceToConnect]);
 
   const applyResolvedPort = useCallback(
@@ -60,67 +63,67 @@ export function useSetupFlow(options: Options = {}) {
   useEffect(() => {
     const onMsg = (event: MessageEvent) => {
       const data = event.data as InstallHostToWebviewMessage | undefined;
-      if (!data || typeof data !== "object" || !("type" in data)) {
+      if (!data || typeof data !== 'object' || !('type' in data)) {
         return;
       }
-      if (data.type === "tursorInstallStatus") {
+      if (data.type === 'tursorInstallStatus') {
         const p = data.payload;
         if (
-          p.phase === "ensure_running" &&
-          p.state === "done" &&
+          p.phase === 'ensure_running' &&
+          p.state === 'done' &&
           p.ok === true &&
-          typeof p.port === "number" &&
+          typeof p.port === 'number' &&
           p.port > 0
         ) {
           applyResolvedPort(p.port);
         }
-        if (p.state === "done" && p.ok === false && p.message) {
+        if (p.state === 'done' && p.ok === false && p.message) {
           setInstallErrorDetail(p.message);
         }
         setSteps((s) => applyInstallStatusPayload(s, p));
       }
-      if (data.type === "tursorBackendResolved") {
-        if (typeof data.port === "number" && data.port > 0) {
+      if (data.type === 'tursorBackendResolved') {
+        if (typeof data.port === 'number' && data.port > 0) {
           applyResolvedPort(data.port);
         }
       }
-      if (data.type === "tursorStartFinished") {
+      if (data.type === 'tursorStartFinished') {
         setStartRunning(false);
         void refreshCliCheck().then((next) => {
-          if (data.code === 0 && next.phase === "ready") {
-            toast.success("Tursor is running. Redirecting…");
+          if (data.code === 0 && next.phase === 'ready') {
+            toast.success('Tursor is running. Redirecting…');
             setTimeout(() => goToConnect(), 400);
             return;
           }
           if (data.code !== 0) {
-            toast.error("Could not start Tursor. Try Install Tursor instead.");
+            toast.error('Could not start Tursor. Try Install Tursor instead.');
           }
         });
       }
-      if (data.type === "tursorInstallFinished") {
+      if (data.type === 'tursorInstallFinished') {
         setInstallRunning(false);
         if (data.code === 0) {
           void refreshCliCheck();
-          toast.success("Redirecting…");
+          toast.success('Redirecting…');
           setTimeout(() => goToConnect(), 600);
         } else {
           setSteps((s) => {
             const next = { ...s };
             for (const p of INSTALL_STEP_ORDER) {
-              if (next[p] === "running") {
-                next[p] = "failure";
+              if (next[p] === 'running') {
+                next[p] = 'failure';
               }
             }
             return next;
           });
           toast.error(
-            "Installation did not finish successfully. Check the steps above and try again.",
+            'Installation did not finish successfully. Check the steps above and try again.',
           );
         }
       }
     };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
   }, [goToConnect, applyResolvedPort, refreshCliCheck]);
 
   const runInstallFlow = useCallback(() => {
@@ -138,15 +141,15 @@ export function useSetupFlow(options: Options = {}) {
     if (vscode) {
       setInstallSession((s) => s + 1);
       setShowInstallSteps(true);
-      setSteps({ ...createInitialStepMap(), clone_repo: "running" });
+      setSteps({ ...createInitialStepMap(), clone_repo: 'running' });
       setInstallErrorDetail(null);
       setInstallRunning(true);
-      vscode.postMessage({ command: "runInstallScript" });
+      vscode.postMessage({ command: 'runInstallScript' });
       return;
     }
 
     void window.alert(
-      "Open this UI from the extension (Tursor: Open panel) to run the install script.",
+      'Open this UI from the extension (Tursor: Open panel) to run the install script.',
     );
   }, []);
 
@@ -154,21 +157,21 @@ export function useSetupFlow(options: Options = {}) {
     const vscode = getVsCodeApi();
     if (!vscode) {
       void window.alert(
-        "Open this UI from the extension (Tursor: Open panel) to start Tursor.",
+        'Open this UI from the extension (Tursor: Open panel) to start Tursor.',
       );
       return;
     }
     setInstallErrorDetail(null);
     setStartRunning(true);
-    vscode.postMessage({ command: "runTursorStart" });
+    vscode.postMessage({ command: 'runTursorStart' });
   }, []);
 
   const handlePrimaryClick = useCallback(() => {
-    if (phase === "ready") {
+    if (phase === 'ready') {
       goToConnect();
       return;
     }
-    if (phase === "needs_start") {
+    if (phase === 'needs_start') {
       runStartFlow();
       return;
     }
@@ -179,31 +182,31 @@ export function useSetupFlow(options: Options = {}) {
   const primaryDisabled = actionBusy || checkingCli;
 
   const primaryDisabledReason = checkingCli
-    ? "Checking whether Tursor is installed and running…"
+    ? 'Checking whether Tursor is installed and running…'
     : actionBusy
-      ? phase === "needs_start"
-        ? "Starting the Tursor backend…"
-        : "Setup is in progress…"
+      ? phase === 'needs_start'
+        ? 'Starting the Tursor backend…'
+        : 'Setup is in progress…'
       : null;
 
   const primaryLabel = checkingCli
-    ? "Checking Tursor status…"
+    ? 'Checking Tursor status…'
     : actionBusy
-      ? phase === "needs_start"
-        ? "Starting Tursor…"
-        : "Running setup…"
-      : phase === "ready"
-        ? "Connect to Tursor"
-        : phase === "needs_start"
-          ? "Start Tursor"
-          : "Install Tursor";
+      ? phase === 'needs_start'
+        ? 'Starting Tursor…'
+        : 'Running setup…'
+      : phase === 'ready'
+        ? 'Connect to Tursor'
+        : phase === 'needs_start'
+          ? 'Start Tursor'
+          : 'Install Tursor';
 
   const setupBlurb =
-    phase === "ready"
-      ? "Tursor backend is running. Connect to your workspace."
-      : phase === "needs_start"
-        ? "Tursor is installed but not running. Start the backend to continue."
-        : "Install the Tursor backend under ~/.tursor to get started.";
+    phase === 'ready'
+      ? 'Tursor backend is running. Connect to your workspace.'
+      : phase === 'needs_start'
+        ? 'Tursor is installed but not running. Start the backend to continue.'
+        : 'Install the Tursor backend under ~/.tursor to get started.';
 
   return {
     phase,

@@ -1,14 +1,14 @@
-import { FolderOpen } from "lucide-react";
-import { useWorkspaceFolderPicker } from "../hooks/useWorkspaceFolderPicker";
-import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
+import { FolderOpen } from 'lucide-react';
+import { useWorkspaceFolderPicker } from '../hooks/useWorkspaceFolderPicker';
+import { DisabledReasonTooltip } from './DisabledReasonTooltip';
 import {
   tursorPrimaryButtonClassName,
   tursorPrimaryButtonHalfWrapperClassName,
   tursorSecondaryButtonFullWidthClassName,
-} from "./tursorButtonClasses";
+} from './tursorButtonClasses';
 
 const fieldClassName =
-  "w-full rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-2.5 font-mono text-xs text-slate-200";
+  'w-full rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-2.5 font-mono text-xs text-slate-200';
 
 type Props = {
   workspacePath: string | null;
@@ -50,7 +50,7 @@ export function ConnectConfigGrid({
         <div className="flex gap-2">
           <input
             type="text"
-            value={workspacePath ?? ""}
+            value={workspacePath ?? ''}
             onChange={(e) => onWorkspacePathChange(e.target.value)}
             placeholder="Path to your project workspace"
             className={fieldClassName}
@@ -119,7 +119,7 @@ export function ConnectConfigGrid({
             onClick={onContinue}
             className={`w-full ${tursorPrimaryButtonClassName}`}
           >
-            {checkingFrontend ? "Checking frontend port…" : "Run tests →"}
+            {checkingFrontend ? 'Checking frontend port…' : 'Run tests →'}
           </button>
         </DisabledReasonTooltip>
       </div>

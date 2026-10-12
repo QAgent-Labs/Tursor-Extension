@@ -1,16 +1,16 @@
-import { motion } from "motion/react";
+import { motion } from 'motion/react';
 
-const DOT = "rgba(34, 211, 238, 0.85)";
-const STROKE = "rgba(34, 211, 238, 0.55)";
+const DOT = 'rgba(34, 211, 238, 0.85)';
+const STROKE = 'rgba(34, 211, 238, 0.55)';
 
 /** Dotted fork: center dot → curved arms → vertical stems → ▼ tips (matches install UI reference). */
 export function InstallForkArrow() {
-  const dash = "2.5 8";
+  const dash = '2.5 8';
   const draw = {
-    fill: "none" as const,
+    fill: 'none' as const,
     stroke: STROKE,
     strokeWidth: 2.5,
-    strokeLinecap: "round" as const,
+    strokeLinecap: 'round' as const,
     strokeDasharray: dash,
   };
 

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
-import { useTursorWebSocket } from "../context/useTursorWebSocket";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
+import { useTursorWebSocket } from '../context/useTursorWebSocket';
 import {
   buildSessionConfig,
   startCdpMessage,
   startContextMessage,
-} from "../workspaceInit";
+} from '../workspaceInit';
 import {
   parseContextBuilding,
   parseFeatureMapBuilding,
@@ -13,13 +13,13 @@ import {
   parseContextReady,
   parseScreenshotUrl,
   type ContextPanelPhase,
-} from "../types/runChat";
+} from '../types/runChat';
 
 type RunFlowOptions = {
   onScreenshot: (url: string) => void;
   onRunStart?: () => void;
   onCdpStarted?: (runId: string, conversationId: string | null) => void;
-  onRunComplete?: (status: "success" | "fail") => void;
+  onRunComplete?: (status: 'success' | 'fail') => void;
 };
 
 export function useRunContextFlow({
@@ -30,30 +30,30 @@ export function useRunContextFlow({
 }: RunFlowOptions) {
   const { config, resolvedWorkspacePath } = useTursorAppConfig();
   const { status, send, subscribe } = useTursorWebSocket();
-  const [phase, setPhase] = useState<ContextPanelPhase>("building");
+  const [phase, setPhase] = useState<ContextPanelPhase>('building');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const contextRequestedRef = useRef(false);
 
   const startCdpRun = useCallback(() => {
-    if (phase !== "ready") {
-      setErrorMessage("Code context is still being created. Please wait.");
+    if (phase !== 'ready') {
+      setErrorMessage('Code context is still being created. Please wait.');
       return false;
     }
 
-    if (status !== "connected") {
-      setErrorMessage("Not connected to the backend. Go to Connect first.");
-      setPhase("error");
+    if (status !== 'connected') {
+      setErrorMessage('Not connected to the backend. Go to Connect first.');
+      setPhase('error');
       return false;
     }
 
     const frontendPort = config.frontendPort;
     if (!frontendPort || frontendPort <= 0) {
       setErrorMessage(
-        "Test frontend port is not set. Go back to Connect and enter your dev server port.",
+        'Test frontend port is not set. Go back to Connect and enter your dev server port.',
       );
-      setPhase("error");
+      setPhase('error');
       return false;
     }
 
@@ -79,12 +79,12 @@ export function useRunContextFlow({
   ]);
 
   useEffect(() => {
-    if (status !== "connected" || contextRequestedRef.current) {
+    if (status !== 'connected' || contextRequestedRef.current) {
       return;
     }
 
     contextRequestedRef.current = true;
-    setPhase("building");
+    setPhase('building');
     setErrorMessage(null);
     send(
       buildSessionConfig({
@@ -93,23 +93,18 @@ export function useRunContextFlow({
       }),
     );
     send(startContextMessage());
-  }, [
-    status,
-    send,
-    resolvedWorkspacePath,
-    config.frontendPort,
-  ]);
+  }, [status, send, resolvedWorkspacePath, config.frontendPort]);
 
   useEffect(() => {
     return subscribe((data) => {
       if (parseContextBuilding(data)) {
-        setPhase("building");
+        setPhase('building');
         setErrorMessage(null);
         return;
       }
 
       if (parseFeatureMapBuilding(data)) {
-        setPhase("mapping");
+        setPhase('mapping');
         setErrorMessage(null);
         return;
       }
@@ -118,15 +113,15 @@ export function useRunContextFlow({
       if (err) {
         setErrorMessage(err.message);
         setPhase(
-          err.code === "missing_tursor_config" ? "missing_config" : "error",
+          err.code === 'missing_tursor_config' ? 'missing_config' : 'error',
         );
         setIsRunning(false);
-        onRunComplete?.("fail");
+        onRunComplete?.('fail');
         return;
       }
 
       if (parseContextReady(data)) {
-        setPhase("ready");
+        setPhase('ready');
         setErrorMessage(null);
         return;
       }
@@ -137,15 +132,20 @@ export function useRunContextFlow({
       }
 
       if (
-        typeof data === "object" &&
+        typeof data === 'object' &&
         data !== null &&
-        (data as { type?: string }).type === "cdp_started"
+        (data as { type?: string }).type === 'cdp_started'
       ) {
-        const event = data as { runId?: string; conversationId?: string | null };
-        if (typeof event.runId === "string" && event.runId) {
+        const event = data as {
+          runId?: string;
+          conversationId?: string | null;
+        };
+        if (typeof event.runId === 'string' && event.runId) {
           onCdpStarted?.(
             event.runId,
-            typeof event.conversationId === "string" ? event.conversationId : null,
+            typeof event.conversationId === 'string'
+              ? event.conversationId
+              : null,
           );
           setHasStarted(true);
           setIsRunning(true);
@@ -154,13 +154,13 @@ export function useRunContextFlow({
       }
 
       if (
-        typeof data === "object" &&
+        typeof data === 'object' &&
         data !== null &&
-        (data as { type?: string }).type === "complete"
+        (data as { type?: string }).type === 'complete'
       ) {
         setIsRunning(false);
         const runStatus = (data as { status?: string }).status;
-        onRunComplete?.(runStatus === "success" ? "success" : "fail");
+        onRunComplete?.(runStatus === 'success' ? 'success' : 'fail');
       }
     });
   }, [subscribe, onScreenshot, onCdpStarted, onRunComplete]);
@@ -176,7 +176,7 @@ export function useRunContextFlow({
   }, [startCdpRun]);
 
   const retryContext = useCallback(() => {
-    setPhase("building");
+    setPhase('building');
     setErrorMessage(null);
     contextRequestedRef.current = true;
     send(
@@ -197,7 +197,7 @@ export function useRunContextFlow({
     errorMessage,
     hasStarted,
     isRunning,
-    contextReady: phase === "ready",
+    contextReady: phase === 'ready',
     startRun: startCdpRun,
     markRunStarted,
     retryRun,

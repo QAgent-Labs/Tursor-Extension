@@ -1,5 +1,5 @@
-import { CheckCircle2, CircleDashed, ImageIcon, XCircle } from "lucide-react";
-import { shortSessionId, type RunSession } from "../types/runHistory";
+import { CheckCircle2, CircleDashed, ImageIcon, XCircle } from 'lucide-react';
+import { shortSessionId, type RunSession } from '../types/runHistory';
 
 type Props = {
   sessions: RunSession[];
@@ -10,16 +10,16 @@ type Props = {
 
 function formatStartedAt(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     hour12: false,
   });
 }
 
-function StatusBadge({ status }: { status: RunSession["status"] }) {
-  if (status === "success") {
+function StatusBadge({ status }: { status: RunSession['status'] }) {
+  if (status === 'success') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
         <CheckCircle2 className="h-3 w-3" aria-hidden />
@@ -27,7 +27,7 @@ function StatusBadge({ status }: { status: RunSession["status"] }) {
       </span>
     );
   }
-  if (status === "fail") {
+  if (status === 'fail') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-300">
         <XCircle className="h-3 w-3" aria-hidden />
@@ -55,8 +55,8 @@ export function RunSessionHistoryList({
         <ImageIcon className="mb-3 h-10 w-10 text-slate-600" aria-hidden />
         <p className="text-sm text-slate-400">No test runs yet</p>
         <p className="mt-1 max-w-xs text-xs text-slate-600">
-          Each Start or Retry creates a session. Screenshots from that run appear
-          here.
+          Each Start or Retry creates a session. Screenshots from that run
+          appear here.
         </p>
       </div>
     );
@@ -76,10 +76,10 @@ export function RunSessionHistoryList({
               onClick={() => onSelectSession(session.id)}
               className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                 isSelected
-                  ? "border-cyan-500/50 bg-cyan-950/40 ring-1 ring-cyan-500/30"
+                  ? 'border-cyan-500/50 bg-cyan-950/40 ring-1 ring-cyan-500/30'
                   : isActive
-                    ? "border-cyan-500/40 bg-cyan-950/30 ring-1 ring-cyan-500/20"
-                    : "border-slate-800/80 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-900/80"
+                    ? 'border-cyan-500/40 bg-cyan-950/30 ring-1 ring-cyan-500/20'
+                    : 'border-slate-800/80 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-900/80'
               }`}
             >
               <div className="flex gap-3">
@@ -113,10 +113,10 @@ export function RunSessionHistoryList({
                     {formatStartedAt(session.startedAt)}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
-                    {session.screenshots.length}{" "}
+                    {session.screenshots.length}{' '}
                     {session.screenshots.length === 1
-                      ? "screenshot"
-                      : "screenshots"}
+                      ? 'screenshot'
+                      : 'screenshots'}
                   </p>
                 </div>
               </div>

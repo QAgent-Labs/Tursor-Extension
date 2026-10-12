@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
-import { Home } from "lucide-react";
-import { AnimatedBackground } from "../components/AnimatedBackground";
-import TursorHeader from "../components/TursorHeader";
-import { tursorPrimaryButtonClassName } from "../components/tursorButtonClasses";
+import { Link } from 'react-router-dom';
+import { Home } from 'lucide-react';
+import { AnimatedBackground } from '../components/AnimatedBackground';
+import TursorHeader from '../components/TursorHeader';
+import { tursorPrimaryButtonClassName } from '../components/tursorButtonClasses';
 
 export default function ErrorPage() {
   return (
@@ -25,10 +25,7 @@ export default function ErrorPage() {
           <p className="mb-8 max-w-md text-sm text-slate-400 sm:mb-10 sm:text-base">
             The page you are looking for does not exist or has been moved.
           </p>
-          <Link
-            to="/"
-            className={tursorPrimaryButtonClassName}
-          >
+          <Link to="/" className={tursorPrimaryButtonClassName}>
             <Home className="h-5 w-5" aria-hidden />
             Back to home
           </Link>

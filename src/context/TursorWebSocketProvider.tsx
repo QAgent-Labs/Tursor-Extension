@@ -5,32 +5,32 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from "react";
+} from 'react';
 import {
   TursorWebSocketContext,
   type TursorWebSocketContextValue,
   type TursorWsStatus,
-} from "./tursorWebSocketContext";
-import { io, type Socket } from "socket.io-client";
-import { getVsCodeApi } from "../vscodeApi";
+} from './tursorWebSocketContext';
+import { io, type Socket } from 'socket.io-client';
+import { getVsCodeApi } from '../vscodeApi';
 import {
   setHostSocketBridgeHandler,
   type TursorSocketHostToWebview,
-} from "../vscodeHostSocketBridge";
-import { emitWorkspaceInit } from "../workspaceInit";
-import { useTursorAppConfig } from "./useTursorAppConfig";
-import { TURSOR_SOCKET_PATH } from "../constants/tursorConnection";
+} from '../vscodeHostSocketBridge';
+import { emitWorkspaceInit } from '../workspaceInit';
+import { useTursorAppConfig } from './useTursorAppConfig';
+import { TURSOR_SOCKET_PATH } from '../constants/tursorConnection';
 
 type Listener = (data: unknown) => void;
 
-const TRANSPORTS = ["websocket"] as const;
+const TRANSPORTS = ['websocket'] as const;
 
 function preferIpv4Loopback(url: string): string {
   try {
     const u = new URL(url);
-    if (u.hostname === "localhost") {
-      u.hostname = "127.0.0.1";
-      return u.toString().replace(/\/$/, "");
+    if (u.hostname === 'localhost') {
+      u.hostname = '127.0.0.1';
+      return u.toString().replace(/\/$/, '');
     }
   } catch {
     /* ignore */
@@ -49,7 +49,7 @@ function disposeSocket(socket: Socket) {
 
 export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
   const { config, backendOrigin, resolvedWorkspacePath } = useTursorAppConfig();
-  const [status, setStatus] = useState<TursorWsStatus>("idle");
+  const [status, setStatus] = useState<TursorWsStatus>('idle');
   const [lastError, setLastError] = useState<string | null>(null);
   const listenersRef = useRef(new Set<Listener>());
   const socketRef = useRef<Socket | null>(null);
@@ -61,21 +61,21 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
     if (backendOrigin) {
       return preferIpv4Loopback(backendOrigin);
     }
-    return "";
+    return '';
   }, [backendOrigin]);
 
   const send = useCallback(
     (payload: unknown) => {
       if (vscode) {
         vscode.postMessage({
-          type: "tursorSocket",
-          action: "emit",
-          event: "message",
+          type: 'tursorSocket',
+          action: 'emit',
+          event: 'message',
           payload,
         });
         return;
       }
-      socketRef.current?.emit("message", payload);
+      socketRef.current?.emit('message', payload);
     },
     [vscode],
   );
@@ -95,37 +95,37 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
 
   const handleHostSocket = useCallback(
     (data: TursorSocketHostToWebview) => {
-      if (data.event === "connected") {
+      if (data.event === 'connected') {
         bridgeConnectedRef.current = true;
-        setStatus("connected");
+        setStatus('connected');
         setLastError(null);
         sendWorkspaceInit(data.workspacePath);
         return;
       }
 
-      if (data.event === "workspaceContext") {
+      if (data.event === 'workspaceContext') {
         sendWorkspaceInit(data.workspacePath);
         return;
       }
 
-      if (data.event === "connect_error") {
+      if (data.event === 'connect_error') {
         bridgeConnectedRef.current = false;
         setLastError(data.message);
-        setStatus("error");
+        setStatus('error');
         return;
       }
 
-      if (data.event === "disconnected") {
+      if (data.event === 'disconnected') {
         bridgeConnectedRef.current = false;
-        setStatus("disconnected");
+        setStatus('disconnected');
         return;
       }
 
-      if (data.event === "socket_error") {
+      if (data.event === 'socket_error') {
         return;
       }
 
-      if (data.event === "serverMessage") {
+      if (data.event === 'serverMessage') {
         listenersRef.current.forEach((fn) => {
           try {
             fn(data.payload);
@@ -151,9 +151,9 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     if (vscode) {
-      vscode.postMessage({ type: "tursorSocket", action: "disconnect" });
+      vscode.postMessage({ type: 'tursorSocket', action: 'disconnect' });
       bridgeConnectedRef.current = false;
-      setStatus("disconnected");
+      setStatus('disconnected');
       return;
     }
 
@@ -162,7 +162,7 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
       disposeSocket(s);
       socketRef.current = null;
     }
-    setStatus("disconnected");
+    setStatus('disconnected');
   }, [vscode]);
 
   const connect = useCallback(
@@ -174,22 +174,22 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
       setLastError(null);
 
       if (!url) {
-        setLastError("Set the backend port in Settings before connecting.");
-        setStatus("error");
+        setLastError('Set the backend port in Settings before connecting.');
+        setStatus('error');
         return;
       }
 
-      setStatus("connecting");
+      setStatus('connecting');
 
       if (vscode) {
         bridgeConnectedRef.current = false;
         vscode.postMessage({
-          type: "tursorSocket",
-          action: "disconnect",
+          type: 'tursorSocket',
+          action: 'disconnect',
         });
         vscode.postMessage({
-          type: "tursorSocket",
-          action: "connect",
+          type: 'tursorSocket',
+          action: 'connect',
           url,
           path,
           transports: [...TRANSPORTS],
@@ -210,22 +210,22 @@ export function TursorWebSocketProvider({ children }: { children: ReactNode }) {
 
       socketRef.current = socket;
 
-      socket.on("connect", () => {
-        setStatus("connected");
+      socket.on('connect', () => {
+        setStatus('connected');
         setLastError(null);
         sendWorkspaceInit();
       });
 
-      socket.on("disconnect", () => {
-        setStatus("disconnected");
+      socket.on('disconnect', () => {
+        setStatus('disconnected');
       });
 
-      socket.on("connect_error", (err: unknown) => {
+      socket.on('connect_error', (err: unknown) => {
         setLastError(err instanceof Error ? err.message : String(err));
-        setStatus("error");
+        setStatus('error');
       });
 
-      socket.on("message", (data: unknown) => {
+      socket.on('message', (data: unknown) => {
         listenersRef.current.forEach((fn) => {
           try {
             fn(data);

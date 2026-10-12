@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 /** Matches ~/.tursor, .tursor, and common path suffixes like /config.json */
 const TURSOR_PATH_PATTERN =
@@ -20,7 +20,10 @@ export function TursorPathText({ text, className }: Props) {
       nodes.push(text.slice(lastIndex, index));
     }
     nodes.push(
-      <span key={`tursor-path-${matchIndex}`} className="font-mono text-cyan-400">
+      <span
+        key={`tursor-path-${matchIndex}`}
+        className="font-mono text-cyan-400"
+      >
         {match[0]}
       </span>,
     );

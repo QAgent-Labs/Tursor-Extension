@@ -1,29 +1,26 @@
-import type { Webview } from "vscode";
-import { io, type Socket } from "socket.io-client";
+import type { Webview } from 'vscode';
+import { io, type Socket } from 'socket.io-client';
 
 export type WorkspaceInitPayload = {
-  type: "workspace_init";
+  type: 'workspace_init';
   workspacePath: string;
 };
 
 function isAllowedSocketUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    if (u.protocol !== "http:" && u.protocol !== "https:") {
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
       return false;
     }
     const h = u.hostname;
-    return h === "127.0.0.1" || h === "localhost";
+    return h === '127.0.0.1' || h === 'localhost';
   } catch {
     return false;
   }
 }
 
-function post(
-  webview: Webview,
-  body: Record<string, unknown>,
-): void {
-  void webview.postMessage({ type: "tursorSocket", ...body });
+function post(webview: Webview, body: Record<string, unknown>): void {
+  void webview.postMessage({ type: 'tursorSocket', ...body });
 }
 
 function postConnected(
@@ -32,7 +29,7 @@ function postConnected(
   workspacePath: string | null,
 ): void {
   post(webview, {
-    event: "connected",
+    event: 'connected',
     socketId: socket.id ?? null,
     transport: socket.io?.engine?.transport?.name ?? null,
     workspacePath,
@@ -61,11 +58,13 @@ export function createTursorSocketHostBridge(
   const emitWorkspaceInit = () => {
     const payload = options.getWorkspaceInit();
     if (!payload) {
-      console.warn("[Tursor socket] workspace_init skipped — missing workspace");
+      console.warn(
+        '[Tursor socket] workspace_init skipped — missing workspace',
+      );
       return;
     }
     post(webview, {
-      event: "workspaceContext",
+      event: 'workspaceContext',
       workspacePath: payload.workspacePath,
     });
   };
@@ -76,7 +75,7 @@ export function createTursorSocketHostBridge(
       postConnected(webview, socket, init?.workspacePath ?? null);
       return;
     }
-    post(webview, { event: "disconnected", reason: "sync" });
+    post(webview, { event: 'disconnected', reason: 'sync' });
   };
 
   const disposeSocket = () => {
@@ -94,42 +93,38 @@ export function createTursorSocketHostBridge(
   };
 
   const handleWebviewMessage = (message: unknown): boolean => {
-    if (typeof message !== "object" || message === null) {
+    if (typeof message !== 'object' || message === null) {
       return false;
     }
     const m = message as Record<string, unknown>;
-    if (m.type !== "tursorSocket" || typeof m.action !== "string") {
+    if (m.type !== 'tursorSocket' || typeof m.action !== 'string') {
       return false;
     }
 
-    if (m.action === "sync") {
+    if (m.action === 'sync') {
       syncSocketState();
       return true;
     }
 
-    if (m.action === "connect") {
+    if (m.action === 'connect') {
       const url = m.url;
       const path = m.path;
-      if (typeof url !== "string" || typeof path !== "string") {
+      if (typeof url !== 'string' || typeof path !== 'string') {
         post(webview, {
-          event: "connect_error",
-          message: "Invalid connect payload (url/path).",
+          event: 'connect_error',
+          message: 'Invalid connect payload (url/path).',
         });
         return true;
       }
       if (!isAllowedSocketUrl(url)) {
         post(webview, {
-          event: "connect_error",
-          message: "Only http(s)://127.0.0.1 or localhost are allowed.",
+          event: 'connect_error',
+          message: 'Only http(s)://127.0.0.1 or localhost are allowed.',
         });
         return true;
       }
 
-      if (
-        socket?.connected &&
-        connectedUrl === url &&
-        connectedPath === path
-      ) {
+      if (socket?.connected && connectedUrl === url && connectedPath === path) {
         const init = options.getWorkspaceInit();
         postConnected(webview, socket, init?.workspacePath ?? null);
         return true;
@@ -140,52 +135,52 @@ export function createTursorSocketHostBridge(
       connectedPath = path;
 
       const transports = Array.isArray(m.transports)
-        ? (m.transports as unknown[]).filter((t): t is string => typeof t === "string")
+        ? (m.transports as unknown[]).filter(
+            (t): t is string => typeof t === 'string',
+          )
         : [];
       const t: string[] =
-        transports.length > 0 ? [...transports] : ["websocket"];
+        transports.length > 0 ? [...transports] : ['websocket'];
 
       socket = io(url, {
         path,
         transports: t,
       });
 
-      socket.on("connect", () => {
+      socket.on('connect', () => {
         const init = options.getWorkspaceInit();
         postConnected(webview, socket!, init?.workspacePath ?? null);
       });
 
-      socket.on("disconnect", (reason: string) => {
-        post(webview, { event: "disconnected", reason: String(reason) });
+      socket.on('disconnect', (reason: string) => {
+        post(webview, { event: 'disconnected', reason: String(reason) });
       });
 
-      socket.on("connect_error", (err: unknown) => {
-        const messageText =
-          err instanceof Error ? err.message : String(err);
+      socket.on('connect_error', (err: unknown) => {
+        const messageText = err instanceof Error ? err.message : String(err);
         const detail = err instanceof Error ? err.stack : undefined;
         post(webview, {
-          event: "connect_error",
+          event: 'connect_error',
           message: messageText,
           detail,
         });
       });
 
-      socket.on("error", (err: unknown) => {
-        const messageText =
-          err instanceof Error ? err.message : String(err);
-        post(webview, { event: "socket_error", message: messageText });
+      socket.on('error', (err: unknown) => {
+        const messageText = err instanceof Error ? err.message : String(err);
+        post(webview, { event: 'socket_error', message: messageText });
       });
 
-      socket.on("message", (payload: unknown) => {
-        post(webview, { event: "serverMessage", payload });
+      socket.on('message', (payload: unknown) => {
+        post(webview, { event: 'serverMessage', payload });
       });
 
       return true;
     }
 
-    if (m.action === "emit") {
+    if (m.action === 'emit') {
       const event = m.event;
-      if (typeof event !== "string") {
+      if (typeof event !== 'string') {
         return true;
       }
       if (!socket?.connected) {
@@ -195,9 +190,9 @@ export function createTursorSocketHostBridge(
       return true;
     }
 
-    if (m.action === "disconnect") {
+    if (m.action === 'disconnect') {
       disposeSocket();
-      post(webview, { event: "disconnected", reason: "client" });
+      post(webview, { event: 'disconnected', reason: 'client' });
       return true;
     }
 

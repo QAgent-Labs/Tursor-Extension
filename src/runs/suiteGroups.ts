@@ -1,7 +1,7 @@
-import type { CdpRunRecord } from "../api/chat";
-import type { RunSession } from "../types/runHistory";
+import type { CdpRunRecord } from '../api/chat';
+import type { RunSession } from '../types/runHistory';
 
-export type SuiteCellStatus = "passed" | "failure" | "running";
+export type SuiteCellStatus = 'passed' | 'failure' | 'running';
 
 export type SuiteGroupCell = {
   key: string;
@@ -20,14 +20,14 @@ export type SuiteGroup = {
 };
 
 function sessionStatus(session: RunSession): SuiteCellStatus {
-  if (session.status === "running") return "running";
-  if (session.status === "success") return "passed";
-  return "failure";
+  if (session.status === 'running') return 'running';
+  if (session.status === 'success') return 'passed';
+  return 'failure';
 }
 
 function headingFor(feature: string): string {
   const name = feature.trim();
-  return name ? `Test suite - ${name}` : "Test suite";
+  return name ? `Test suite - ${name}` : 'Test suite';
 }
 
 export function buildSuiteGroups(
@@ -45,7 +45,7 @@ export function buildSuiteGroups(
     }
     const current = cells[index]!;
     const screenshots =
-      cell.status === "running" ||
+      cell.status === 'running' ||
       cell.screenshots.length >= current.screenshots.length
         ? cell.screenshots
         : current.screenshots;
@@ -65,11 +65,11 @@ export function buildSuiteGroups(
     const caseId = run.case_id || run.cdp_step_id;
     if (!caseId) continue;
     upsert({
-      key: `${run.response_id || "earlier"}:${caseId}`,
+      key: `${run.response_id || 'earlier'}:${caseId}`,
       caseId,
       responseId: run.response_id,
       feature: run.feature,
-      title: run.title || "Test case",
+      title: run.title || 'Test case',
       status: run.status,
       screenshots: run.screenshots,
     });
@@ -78,7 +78,8 @@ export function buildSuiteGroups(
   if (conversationId) {
     const latestByCase = new Map<string, RunSession>();
     for (const session of sessions) {
-      if (session.conversationId !== conversationId || !session.caseId) continue;
+      if (session.conversationId !== conversationId || !session.caseId)
+        continue;
       const previous = latestByCase.get(session.caseId);
       if (!previous || session.startedAt >= previous.startedAt) {
         latestByCase.set(session.caseId, session);
@@ -91,16 +92,16 @@ export function buildSuiteGroups(
       if (
         !existing &&
         session.screenshots.length === 0 &&
-        session.status !== "running"
+        session.status !== 'running'
       ) {
         continue;
       }
       upsert({
-        key: `${session.responseId || "live"}:${caseId}`,
+        key: `${session.responseId || 'live'}:${caseId}`,
         caseId,
-        responseId: session.responseId ?? "",
-        feature: session.feature ?? "",
-        title: session.caseTitle || "Test case",
+        responseId: session.responseId ?? '',
+        feature: session.feature ?? '',
+        title: session.caseTitle || 'Test case',
         status: sessionStatus(session),
         screenshots: session.screenshots,
       });
@@ -109,12 +110,15 @@ export function buildSuiteGroups(
 
   const groups: SuiteGroup[] = [];
   for (const cell of cells) {
-    const key = cell.responseId || "earlier-runs";
+    const key = cell.responseId || 'earlier-runs';
     let group = groups.find((item) => item.key === key);
     if (!group) {
       group = { key, heading: headingFor(cell.feature), cells: [] };
       groups.push(group);
-    } else if (!group.heading.startsWith("Test suite -") && cell.feature.trim()) {
+    } else if (
+      !group.heading.startsWith('Test suite -') &&
+      cell.feature.trim()
+    ) {
       group.heading = headingFor(cell.feature);
     }
     group.cells.push(cell);

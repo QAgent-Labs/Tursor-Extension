@@ -1,26 +1,26 @@
-import { motion } from "motion/react";
-import { Brain, Globe, LineChart } from "lucide-react";
+import { motion } from 'motion/react';
+import { Brain, Globe, LineChart } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const FEATURES = [
   {
     icon: Brain,
-    iconClass: "text-blue-500",
-    title: "Understands your code",
-    subtitle: "Indexes components, routes, APIs and logic.",
+    iconClass: 'text-blue-500',
+    title: 'Understands your code',
+    subtitle: 'Indexes components, routes, APIs and logic.',
   },
   {
     icon: Globe,
-    iconClass: "text-violet-500",
-    title: "Tests in real browsers",
-    subtitle: "Runs tests using Chrome DevTools Protocol.",
+    iconClass: 'text-violet-500',
+    title: 'Tests in real browsers',
+    subtitle: 'Runs tests using Chrome DevTools Protocol.',
   },
   {
     icon: LineChart,
-    iconClass: "text-purple-500",
-    title: "Real-time feedback",
-    subtitle: "Live execution status, screenshots and insights.",
+    iconClass: 'text-purple-500',
+    title: 'Real-time feedback',
+    subtitle: 'Live execution status, screenshots and insights.',
   },
 ] as const;
 

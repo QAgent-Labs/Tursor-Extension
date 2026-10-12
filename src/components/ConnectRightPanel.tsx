@@ -1,7 +1,7 @@
-import { motion } from "motion/react";
-import { ConnectIllustration } from "./ConnectIllustration";
-import { ConnectConfigGrid } from "./ConnectConfigGrid";
-import { tursorSecondaryButtonClassName } from "./tursorButtonClasses";
+import { motion } from 'motion/react';
+import { ConnectIllustration } from './ConnectIllustration';
+import { ConnectConfigGrid } from './ConnectConfigGrid';
+import { tursorSecondaryButtonClassName } from './tursorButtonClasses';
 
 type Props = {
   statusTitle: string;

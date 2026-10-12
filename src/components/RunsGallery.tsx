@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ImageOff, XCircle } from "lucide-react";
-import { ScreenshotCarousel } from "./ScreenshotCarousel";
-import type { SuiteGroup, SuiteGroupCell } from "../runs/suiteGroups";
-import type { RunSessionStatus } from "../types/runHistory";
+import { useEffect, useState } from 'react';
+import { ArrowLeft, CheckCircle2, ImageOff, XCircle } from 'lucide-react';
+import { ScreenshotCarousel } from './ScreenshotCarousel';
+import type { SuiteGroup, SuiteGroupCell } from '../runs/suiteGroups';
+import type { RunSessionStatus } from '../types/runHistory';
 
 export type RunsPreview = {
   key: string;
   title: string;
   screenshots: string[];
-  status: "passed" | "failure";
+  status: 'passed' | 'failure';
 };
 
 type Props = {
@@ -22,8 +22,8 @@ type Props = {
   onClosePreview: () => void;
 };
 
-function CellStatusPill({ status }: { status: SuiteGroupCell["status"] }) {
-  if (status === "passed") {
+function CellStatusPill({ status }: { status: SuiteGroupCell['status'] }) {
+  if (status === 'passed') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-black shadow-lg shadow-black/30">
         <CheckCircle2 className="h-3 w-3 text-black" aria-hidden />
@@ -31,7 +31,7 @@ function CellStatusPill({ status }: { status: SuiteGroupCell["status"] }) {
       </span>
     );
   }
-  if (status === "failure") {
+  if (status === 'failure') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-black shadow-lg shadow-black/30">
         <XCircle className="h-3 w-3 text-black" aria-hidden />
@@ -43,10 +43,10 @@ function CellStatusPill({ status }: { status: SuiteGroupCell["status"] }) {
 }
 
 function carouselStatus(
-  status: SuiteGroupCell["status"] | RunsPreview["status"],
+  status: SuiteGroupCell['status'] | RunsPreview['status'],
 ): RunSessionStatus | null {
-  if (status === "passed") return "success";
-  if (status === "failure") return "fail";
+  if (status === 'passed') return 'success';
+  if (status === 'failure') return 'fail';
   return null;
 }
 
@@ -87,7 +87,7 @@ export function RunsGallery({
     const frame = requestAnimationFrame(() => {
       if (!caseId) return;
       document.getElementById(`run-cell-${caseId}`)?.scrollIntoView({
-        block: "nearest",
+        block: 'nearest',
       });
     });
     return () => cancelAnimationFrame(frame);
@@ -161,7 +161,8 @@ export function RunsGallery({
           <ImageOff className="h-10 w-10 text-slate-600" />
           <p className="text-sm text-slate-500">Runs will appear here</p>
           <p className="max-w-xs text-xs text-slate-600">
-            Start a test case from the chat and its screenshots collect in this grid.
+            Start a test case from the chat and its screenshots collect in this
+            grid.
           </p>
         </div>
       ) : (
@@ -169,7 +170,7 @@ export function RunsGallery({
           {groups.map((group, index) => (
             <section
               key={group.key}
-              className={index === 0 ? "" : "border-t border-slate-800 pt-4"}
+              className={index === 0 ? '' : 'border-t border-slate-800 pt-4'}
             >
               <h3 className="mb-2 text-sm font-medium text-slate-200">
                 {group.heading}
@@ -186,12 +187,13 @@ export function RunsGallery({
                       onClick={() => setOpenCaseId(cell.caseId)}
                       className={`relative rounded-xl border bg-slate-900/50 text-left transition duration-200 ease-out ${
                         highlighted
-                          ? "z-10 scale-105 border-white ring-2 ring-white"
-                          : "border-slate-800/80 hover:z-10 hover:border-white hover:ring-2 hover:ring-white"
+                          ? 'z-10 scale-105 border-white ring-2 ring-white'
+                          : 'border-slate-800/80 hover:z-10 hover:border-white hover:ring-2 hover:ring-white'
                       }`}
                     >
                       <div className="relative aspect-video overflow-hidden rounded-t-xl bg-slate-950">
-                        {cell.status === "passed" || cell.status === "failure" ? (
+                        {cell.status === 'passed' ||
+                        cell.status === 'failure' ? (
                           <div className="absolute right-2 top-2 z-10">
                             <CellStatusPill status={cell.status} />
                           </div>
@@ -204,9 +206,9 @@ export function RunsGallery({
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center px-2 text-center text-[11px] text-slate-500">
-                            {cell.status === "running"
-                              ? "Waiting for screenshots"
-                              : "No screenshots"}
+                            {cell.status === 'running'
+                              ? 'Waiting for screenshots'
+                              : 'No screenshots'}
                           </div>
                         )}
                       </div>

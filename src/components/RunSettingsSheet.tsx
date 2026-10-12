@@ -1,35 +1,27 @@
-import { motion, AnimatePresence } from "motion/react";
-import { X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
-import { useTursorWebSocket } from "../context/useTursorWebSocket";
-import { TursorConfigFields } from "./TursorConfigFields";
-import { configFieldsToPatch } from "../utils/tursorConfigPatch";
-import { useTursorConfigDraft } from "../hooks/useTursorConfigDraft";
+import { motion, AnimatePresence } from 'motion/react';
+import { X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
+import { useTursorWebSocket } from '../context/useTursorWebSocket';
+import { TursorConfigFields } from './TursorConfigFields';
+import { configFieldsToPatch } from '../utils/tursorConfigPatch';
+import { useTursorConfigDraft } from '../hooks/useTursorConfigDraft';
 import {
   backendConnectionStatusClass,
   backendConnectionStatusLabel,
   frontendUrlFromPort,
-} from "../utils/connectionStatusLabel";
-import { tursorPrimaryButtonFullWidthClassName } from "./tursorButtonClasses";
+} from '../utils/connectionStatusLabel';
+import { tursorPrimaryButtonFullWidthClassName } from './tursorButtonClasses';
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
-function SettingsFormBody({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+function SettingsFormBody({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
-  const {
-    config,
-    setConfig,
-    editorWorkspacePath,
-    resolvedWorkspacePath,
-  } = useTursorAppConfig();
+  const { config, setConfig, editorWorkspacePath, resolvedWorkspacePath } =
+    useTursorAppConfig();
   const { status, disconnect } = useTursorWebSocket();
 
   const {
@@ -63,7 +55,7 @@ function SettingsFormBody({
     resetDraft();
     disconnect();
     onClose();
-    navigate("/initial-setup?step=connect");
+    navigate('/initial-setup?step=connect');
   };
 
   return (
@@ -105,7 +97,7 @@ function SettingsFormBody({
 
 export function RunSettingsSheet({ open, onClose }: Props) {
   const { resolvedWorkspacePath, config } = useTursorAppConfig();
-  const formKey = `${resolvedWorkspacePath ?? ""}:${config.backendPort ?? ""}:${config.frontendPort ?? ""}`;
+  const formKey = `${resolvedWorkspacePath ?? ''}:${config.backendPort ?? ''}:${config.frontendPort ?? ''}`;
 
   return (
     <AnimatePresence>
@@ -127,7 +119,7 @@ export function RunSettingsSheet({ open, onClose }: Props) {
             initial={{ y: 24, opacity: 0, scale: 0.98 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 24, opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 360 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 360 }}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 px-4 py-3">
               <h2

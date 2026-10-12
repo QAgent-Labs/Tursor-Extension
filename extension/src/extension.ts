@@ -1,33 +1,33 @@
-import { spawn, execSync, type ChildProcess } from "node:child_process";
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
-import * as vscode from "vscode";
-import dotenv from "dotenv";
+import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as vscode from 'vscode';
+import dotenv from 'dotenv';
 import {
   createTursorSocketHostBridge,
   type WorkspaceInitPayload,
-} from "./tursorSocketHost";
+} from './tursorSocketHost';
 
 const outDir = __dirname;
-const extensionRoot = path.join(outDir, "..");
-const repoRoot = path.join(outDir, "../..");
-dotenv.config({ path: path.join(extensionRoot, ".env") });
-dotenv.config({ path: path.join(repoRoot, ".env"), override: true });
+const extensionRoot = path.join(outDir, '..');
+const repoRoot = path.join(outDir, '../..');
+dotenv.config({ path: path.join(extensionRoot, '.env') });
+dotenv.config({ path: path.join(repoRoot, '.env'), override: true });
 
 const DEFAULT_BACKEND_PORT = 9090;
 
 /** User-local CLI from install script (`~/.tursor/npm-global/bin`), not system npm -g. */
 function tursorCliBinDir(): string {
-  return path.join(os.homedir(), ".tursor", "npm-global", "bin");
+  return path.join(os.homedir(), '.tursor', 'npm-global', 'bin');
 }
 
 function tursorAiCliBinDir(): string {
-  return path.join(os.homedir(), ".tursor-ai", "npm-global", "bin");
+  return path.join(os.homedir(), '.tursor-ai', 'npm-global', 'bin');
 }
 
-function pathKeyForPlatform(): "Path" | "PATH" {
-  return process.platform === "win32" ? "Path" : "PATH";
+function pathKeyForPlatform(): 'Path' | 'PATH' {
+  return process.platform === 'win32' ? 'Path' : 'PATH';
 }
 
 function prependPathSegments(current: string, segments: string[]): string {
@@ -49,14 +49,14 @@ function loginShellPath(): string | null {
   if (cachedLoginShellPath !== undefined) {
     return cachedLoginShellPath;
   }
-  if (process.platform === "win32") {
+  if (process.platform === 'win32') {
     cachedLoginShellPath = null;
     return cachedLoginShellPath;
   }
-  const shell = process.env.SHELL?.trim() || "/bin/zsh";
+  const shell = process.env.SHELL?.trim() || '/bin/zsh';
   try {
     cachedLoginShellPath = execSync(`${shell} -lic 'printf %s "$PATH"'`, {
-      encoding: "utf8",
+      encoding: 'utf8',
       timeout: 3000,
       env: { ...process.env, HOME: os.homedir() },
     }).trim();
@@ -69,23 +69,21 @@ function loginShellPath(): string | null {
 function standardNodeBinDirs(): string[] {
   const home = os.homedir();
   const dirs = [
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
     path.dirname(process.execPath),
-    path.join(home, ".fnm", "current", "bin"),
-    path.join(home, ".volta", "bin"),
+    path.join(home, '.fnm', 'current', 'bin'),
+    path.join(home, '.volta', 'bin'),
   ];
-  const nvmRoot = path.join(home, ".nvm", "versions", "node");
+  const nvmRoot = path.join(home, '.nvm', 'versions', 'node');
   try {
     const versions = fs
       .readdirSync(nvmRoot)
-      .filter((v) => fs.existsSync(path.join(nvmRoot, v, "bin", "npm")));
-    versions.sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true }),
-    );
+      .filter((v) => fs.existsSync(path.join(nvmRoot, v, 'bin', 'npm')));
+    versions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     const latest = versions.at(-1);
     if (latest) {
-      dirs.push(path.join(nvmRoot, latest, "bin"));
+      dirs.push(path.join(nvmRoot, latest, 'bin'));
     }
   } catch {
     /* no nvm */
@@ -96,9 +94,9 @@ function standardNodeBinDirs(): string[] {
 function findNpmOnPath(pathValue: string): string | null {
   for (const dir of pathValue.split(path.delimiter).filter(Boolean)) {
     const npm =
-      process.platform === "win32"
-        ? path.join(dir, "npm.cmd")
-        : path.join(dir, "npm");
+      process.platform === 'win32'
+        ? path.join(dir, 'npm.cmd')
+        : path.join(dir, 'npm');
     if (fs.existsSync(npm)) {
       return npm;
     }
@@ -113,9 +111,9 @@ function resolveNpmExecutable(pathValue: string): string | null {
   }
   for (const dir of standardNodeBinDirs()) {
     const npm =
-      process.platform === "win32"
-        ? path.join(dir, "npm.cmd")
-        : path.join(dir, "npm");
+      process.platform === 'win32'
+        ? path.join(dir, 'npm.cmd')
+        : path.join(dir, 'npm');
     if (fs.existsSync(npm)) {
       return npm;
     }
@@ -134,18 +132,18 @@ function buildPathWithTursorCli(seed: string): string {
 function resolvePythonForInstall(seedPath: string): string | null {
   const candidates = [
     process.env.TURSOR_PYTHON,
-    "python3.13",
-    "python3.12",
-    "python3.11",
-    "python3.10",
-    "python3",
-    "/opt/homebrew/bin/python3.13",
-    "/opt/homebrew/bin/python3.12",
-    "/usr/local/bin/python3.12",
+    'python3.13',
+    'python3.12',
+    'python3.11',
+    'python3.10',
+    'python3',
+    '/opt/homebrew/bin/python3.13',
+    '/opt/homebrew/bin/python3.12',
+    '/usr/local/bin/python3.12',
   ].filter(Boolean) as string[];
 
   for (const candidate of candidates) {
-    const resolved = candidate.includes("/")
+    const resolved = candidate.includes('/')
       ? candidate
       : findExecutableOnPath(candidate, seedPath);
     if (!resolved || !fs.existsSync(resolved)) {
@@ -154,7 +152,7 @@ function resolvePythonForInstall(seedPath: string): string | null {
     try {
       execSync(
         `"${resolved}" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"`,
-        { encoding: "utf8", timeout: 3000 },
+        { encoding: 'utf8', timeout: 3000 },
       );
       return resolved;
     } catch {
@@ -167,7 +165,7 @@ function resolvePythonForInstall(seedPath: string): string | null {
 function findExecutableOnPath(name: string, seedPath: string): string | null {
   for (const dir of seedPath.split(path.delimiter).filter(Boolean)) {
     const full =
-      process.platform === "win32"
+      process.platform === 'win32'
         ? path.join(dir, `${name}.exe`)
         : path.join(dir, name);
     if (fs.existsSync(full)) {
@@ -182,7 +180,7 @@ function envForInstallScript(
   base: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   const pathKey = pathKeyForPlatform();
-  let nextPath = buildPathWithTursorCli(base[pathKey] ?? "");
+  let nextPath = buildPathWithTursorCli(base[pathKey] ?? '');
   const loginPath = loginShellPath();
   if (loginPath) {
     nextPath = buildPathWithTursorCli(loginPath);
@@ -206,9 +204,9 @@ function envWithTursorCliOnPath(
   base: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   const pathKey = pathKeyForPlatform();
-  let nextPath = buildPathWithTursorCli(base[pathKey] ?? "");
+  let nextPath = buildPathWithTursorCli(base[pathKey] ?? '');
   let npm = resolveNpmExecutable(nextPath);
-  const localCli = path.join(tursorCliBinDir(), "tursor");
+  const localCli = path.join(tursorCliBinDir(), 'tursor');
 
   if (!npm || !fs.existsSync(localCli)) {
     const loginPath = loginShellPath();
@@ -231,44 +229,44 @@ function envWithTursorCliOnPath(
 
 function backendHttpOrigin(): string {
   const raw = process.env.VITE_TURSOR_SOCKET_URL?.trim();
-  if (!raw) return "";
+  if (!raw) return '';
   try {
     return new URL(raw).origin;
   } catch {
-    return "";
+    return '';
   }
 }
 
-const PANEL_VIEW_TYPE = "tursorPanel";
-const STATUS_PREFIX = "__TURSOR_STATUS__";
+const PANEL_VIEW_TYPE = 'tursorPanel';
+const STATUS_PREFIX = '__TURSOR_STATUS__';
 
 type WebviewToHostMessage =
-  | { command: "runInstallScript" }
-  | { command: "runTursorStart" }
+  | { command: 'runInstallScript' }
+  | { command: 'runTursorStart' }
   | {
-      command: "probeTursorStatus";
+      command: 'probeTursorStatus';
       requestId: string;
       hintPort?: number | null;
     }
-  | { command: "checkTursorCli"; requestId: string }
-  | { command: "pickWorkspaceFolder" }
-  | { command: "requestDefaultWorkspace" };
+  | { command: 'checkTursorCli'; requestId: string }
+  | { command: 'pickWorkspaceFolder' }
+  | { command: 'requestDefaultWorkspace' };
 
-type TursorSetupPhase = "needs_install" | "needs_start" | "ready";
+type TursorSetupPhase = 'needs_install' | 'needs_start' | 'ready';
 
 type InstallPhase =
-  | "clone_repo"
-  | "clone_ai_repo"
-  | "build"
-  | "ai_setup"
-  | "cli_install"
-  | "ai_cli_install"
-  | "ensure_running"
-  | "ensure_ai_running";
+  | 'clone_repo'
+  | 'clone_ai_repo'
+  | 'build'
+  | 'ai_setup'
+  | 'cli_install'
+  | 'ai_cli_install'
+  | 'ensure_running'
+  | 'ensure_ai_running';
 
 type InstallStatusPayload = {
   phase: InstallPhase;
-  state: "start" | "done" | "skipped";
+  state: 'start' | 'done' | 'skipped';
   ok?: boolean;
   installed?: boolean;
   message?: string;
@@ -279,55 +277,57 @@ type InstallStatusPayload = {
 
 function isRunInstallMessage(msg: unknown): msg is WebviewToHostMessage {
   return (
-    typeof msg === "object" &&
+    typeof msg === 'object' &&
     msg !== null &&
-    (msg as WebviewToHostMessage).command === "runInstallScript"
+    (msg as WebviewToHostMessage).command === 'runInstallScript'
   );
 }
 
 function isProbeStatusMessage(
   msg: unknown,
-): msg is Extract<WebviewToHostMessage, { command: "probeTursorStatus" }> {
+): msg is Extract<WebviewToHostMessage, { command: 'probeTursorStatus' }> {
   return (
-    typeof msg === "object" &&
+    typeof msg === 'object' &&
     msg !== null &&
-    (msg as { command?: string }).command === "probeTursorStatus" &&
-    typeof (msg as { requestId?: unknown }).requestId === "string"
+    (msg as { command?: string }).command === 'probeTursorStatus' &&
+    typeof (msg as { requestId?: unknown }).requestId === 'string'
   );
 }
 
-function isRunTursorStartMessage(msg: unknown): msg is { command: "runTursorStart" } {
+function isRunTursorStartMessage(
+  msg: unknown,
+): msg is { command: 'runTursorStart' } {
   return (
-    typeof msg === "object" &&
+    typeof msg === 'object' &&
     msg !== null &&
-    (msg as { command?: string }).command === "runTursorStart"
+    (msg as { command?: string }).command === 'runTursorStart'
   );
 }
 
 function isCheckTursorCliMessage(
   msg: unknown,
-): msg is Extract<WebviewToHostMessage, { command: "checkTursorCli" }> {
+): msg is Extract<WebviewToHostMessage, { command: 'checkTursorCli' }> {
   return (
-    typeof msg === "object" &&
+    typeof msg === 'object' &&
     msg !== null &&
-    (msg as { command?: string }).command === "checkTursorCli" &&
-    typeof (msg as { requestId?: unknown }).requestId === "string"
+    (msg as { command?: string }).command === 'checkTursorCli' &&
+    typeof (msg as { requestId?: unknown }).requestId === 'string'
   );
 }
 
 function isPickWorkspaceMessage(msg: unknown): boolean {
   return (
-    typeof msg === "object" &&
+    typeof msg === 'object' &&
     msg !== null &&
-    (msg as { command?: string }).command === "pickWorkspaceFolder"
+    (msg as { command?: string }).command === 'pickWorkspaceFolder'
   );
 }
 
 function isRequestDefaultWorkspaceMessage(msg: unknown): boolean {
   return (
-    typeof msg === "object" &&
+    typeof msg === 'object' &&
     msg !== null &&
-    (msg as { command?: string }).command === "requestDefaultWorkspace"
+    (msg as { command?: string }).command === 'requestDefaultWorkspace'
   );
 }
 
@@ -341,7 +341,7 @@ async function fetchHealthStatus(
     }
     const data = (await res.json()) as { port?: number };
     const port =
-      typeof data.port === "number" && data.port > 0 ? data.port : hintPort;
+      typeof data.port === 'number' && data.port > 0 ? data.port : hintPort;
     return { running: true, port };
   } catch {
     return { running: false, port: null };
@@ -352,44 +352,44 @@ function resolveBackendPortViaCli(
   hintPort?: number | null,
 ): Promise<{ running: boolean; port: number | null; origin: string | null }> {
   return new Promise((resolve) => {
-    const args = ["port", "--json"];
-    if (typeof hintPort === "number" && hintPort > 0) {
-      args.push("--port", String(hintPort));
+    const args = ['port', '--json'];
+    if (typeof hintPort === 'number' && hintPort > 0) {
+      args.push('--port', String(hintPort));
     }
 
-    const child = spawn("tursor", args, {
+    const child = spawn('tursor', args, {
       env: envWithTursorCliOnPath(),
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = "";
+    let stdout = '';
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
+      child.kill('SIGTERM');
       resolve({ running: false, port: null, origin: null });
     }, 3_000);
 
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString('utf8');
     });
 
-    child.on("close", () => {
+    child.on('close', () => {
       clearTimeout(timer);
       try {
-        const line = stdout.trim().split("\n").pop() ?? stdout.trim();
+        const line = stdout.trim().split('\n').pop() ?? stdout.trim();
         const parsed = JSON.parse(line) as {
           running?: boolean;
           port?: number | null;
           origin?: string | null;
         };
         const port =
-          typeof parsed.port === "number" && parsed.port > 0
+          typeof parsed.port === 'number' && parsed.port > 0
             ? parsed.port
             : null;
         resolve({
           running: parsed.running === true,
           port,
           origin:
-            typeof parsed.origin === "string" && parsed.origin.trim()
+            typeof parsed.origin === 'string' && parsed.origin.trim()
               ? parsed.origin.trim()
               : port
                 ? `http://127.0.0.1:${port}`
@@ -400,7 +400,7 @@ function resolveBackendPortViaCli(
       }
     });
 
-    child.on("error", () => {
+    child.on('error', () => {
       clearTimeout(timer);
       resolve({ running: false, port: null, origin: null });
     });
@@ -411,7 +411,9 @@ async function probeTursorStatus(
   hintPort?: number | null,
 ): Promise<{ running: boolean; port: number | null }> {
   const hint =
-    typeof hintPort === "number" && hintPort > 0 ? hintPort : DEFAULT_BACKEND_PORT;
+    typeof hintPort === 'number' && hintPort > 0
+      ? hintPort
+      : DEFAULT_BACKEND_PORT;
   const health = await fetchHealthStatus(hint);
   if (health.running && health.port) {
     return health;
@@ -424,23 +426,25 @@ async function probeTursorStatus(
 }
 
 function tursorHomeDir(): string {
-  return path.join(os.homedir(), ".tursor");
+  return path.join(os.homedir(), '.tursor');
 }
 
 function tursorCliPath(): string {
-  return path.join(tursorCliBinDir(), "tursor");
+  return path.join(tursorCliBinDir(), 'tursor');
 }
 
 type TursorStatusJsonResult =
-  | { outcome: "cli_missing" }
-  | { outcome: "not_running" }
-  | { outcome: "running"; port: number };
+  | { outcome: 'cli_missing' }
+  | { outcome: 'not_running' }
+  | { outcome: 'running'; port: number };
 
-function parseJsonLineFromCliOutput(stdout: string): Record<string, unknown> | null {
-  const lines = stdout.trim().split("\n").filter(Boolean);
+function parseJsonLineFromCliOutput(
+  stdout: string,
+): Record<string, unknown> | null {
+  const lines = stdout.trim().split('\n').filter(Boolean);
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     const line = lines[i]?.trim();
-    if (!line?.startsWith("{")) {
+    if (!line?.startsWith('{')) {
       continue;
     }
     try {
@@ -455,14 +459,14 @@ function parseJsonLineFromCliOutput(stdout: string): Record<string, unknown> | n
 function runTursorStatusJson(): Promise<TursorStatusJsonResult> {
   return new Promise((resolve) => {
     const cliPath = tursorCliPath();
-    const command = fs.existsSync(cliPath) ? cliPath : "tursor";
+    const command = fs.existsSync(cliPath) ? cliPath : 'tursor';
 
-    const child = spawn(command, ["status", "--json"], {
+    const child = spawn(command, ['status', '--json'], {
       env: envWithTursorCliOnPath(),
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = "";
+    let stdout = '';
     let settled = false;
 
     const finish = (result: TursorStatusJsonResult) => {
@@ -474,43 +478,43 @@ function runTursorStatusJson(): Promise<TursorStatusJsonResult> {
     };
 
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      finish({ outcome: "cli_missing" });
+      child.kill('SIGTERM');
+      finish({ outcome: 'cli_missing' });
     }, 4_000);
 
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString('utf8');
     });
 
-    child.on("error", () => {
+    child.on('error', () => {
       clearTimeout(timer);
-      finish({ outcome: "cli_missing" });
+      finish({ outcome: 'cli_missing' });
     });
 
-    child.on("close", (code) => {
+    child.on('close', (code) => {
       clearTimeout(timer);
       const parsed = parseJsonLineFromCliOutput(stdout);
       if (parsed && parsed.running === true) {
         const port =
-          typeof parsed.port === "number" && parsed.port > 0
+          typeof parsed.port === 'number' && parsed.port > 0
             ? parsed.port
             : 9090;
-        finish({ outcome: "running", port });
+        finish({ outcome: 'running', port });
         return;
       }
       if (parsed && parsed.running === false) {
-        finish({ outcome: "not_running" });
+        finish({ outcome: 'not_running' });
         return;
       }
       if (code === 0) {
-        finish({ outcome: "running", port: 9090 });
+        finish({ outcome: 'running', port: 9090 });
         return;
       }
-      if (!fs.existsSync(cliPath) && command === "tursor") {
-        finish({ outcome: "cli_missing" });
+      if (!fs.existsSync(cliPath) && command === 'tursor') {
+        finish({ outcome: 'cli_missing' });
         return;
       }
-      finish({ outcome: "not_running" });
+      finish({ outcome: 'not_running' });
     });
   });
 }
@@ -521,22 +525,22 @@ async function checkTursorSetupState(): Promise<{
 }> {
   const health = await fetchHealthStatus(DEFAULT_BACKEND_PORT);
   if (health.running && health.port) {
-    return { phase: "ready", port: health.port };
+    return { phase: 'ready', port: health.port };
   }
 
   const cliPath = tursorCliPath();
   if (!fs.existsSync(cliPath)) {
-    return { phase: "needs_install", port: null };
+    return { phase: 'needs_install', port: null };
   }
 
   const status = await runTursorStatusJson();
-  if (status.outcome === "cli_missing") {
-    return { phase: "needs_install", port: null };
+  if (status.outcome === 'cli_missing') {
+    return { phase: 'needs_install', port: null };
   }
-  if (status.outcome === "running") {
-    return { phase: "ready", port: status.port };
+  if (status.outcome === 'running') {
+    return { phase: 'ready', port: status.port };
   }
-  return { phase: "needs_start", port: null };
+  return { phase: 'needs_start', port: null };
 }
 
 async function pickWorkspaceFolder(webview: vscode.Webview): Promise<void> {
@@ -544,12 +548,12 @@ async function pickWorkspaceFolder(webview: vscode.Webview): Promise<void> {
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
-    openLabel: "Select workspace",
+    openLabel: 'Select workspace',
   });
   const folder = picked?.[0]?.fsPath;
   if (folder) {
     void webview.postMessage({
-      type: "tursorWorkspacePicked",
+      type: 'tursorWorkspacePicked',
       workspacePath: folder,
     });
   }
@@ -564,25 +568,25 @@ function parseStatusLine(line: string): InstallStatusPayload | null {
   try {
     const raw = JSON.parse(jsonPart) as Record<string, unknown>;
 
-    if (!raw || typeof raw !== "object") return null;
+    if (!raw || typeof raw !== 'object') return null;
 
     const phase = raw.phase;
     const state = raw.state;
 
     if (
-      phase !== "clone_repo" &&
-      phase !== "clone_ai_repo" &&
-      phase !== "build" &&
-      phase !== "ai_setup" &&
-      phase !== "cli_install" &&
-      phase !== "ai_cli_install" &&
-      phase !== "ensure_running" &&
-      phase !== "ensure_ai_running"
+      phase !== 'clone_repo' &&
+      phase !== 'clone_ai_repo' &&
+      phase !== 'build' &&
+      phase !== 'ai_setup' &&
+      phase !== 'cli_install' &&
+      phase !== 'ai_cli_install' &&
+      phase !== 'ensure_running' &&
+      phase !== 'ensure_ai_running'
     ) {
       return null;
     }
 
-    if (state !== "start" && state !== "done" && state !== "skipped") {
+    if (state !== 'start' && state !== 'done' && state !== 'skipped') {
       return null;
     }
 
@@ -593,9 +597,9 @@ function parseStatusLine(line: string): InstallStatusPayload | null {
       installed: raw.installed as boolean | undefined,
       message: raw.message as string | undefined,
       detail: raw.detail as string | undefined,
-      port: typeof raw.port === "number" && raw.port > 0 ? raw.port : undefined,
+      port: typeof raw.port === 'number' && raw.port > 0 ? raw.port : undefined,
       aiPort:
-        typeof raw.aiPort === "number" && raw.aiPort > 0
+        typeof raw.aiPort === 'number' && raw.aiPort > 0
           ? raw.aiPort
           : undefined,
     };
@@ -610,7 +614,7 @@ function buildWorkspaceInitPayload(): WorkspaceInitPayload | null {
   if (!workspacePath) {
     return null;
   }
-  return { type: "workspace_init", workspacePath };
+  return { type: 'workspace_init', workspacePath };
 }
 
 const activeSocketBridges = new Set<{ emitWorkspaceInit: () => void }>();
@@ -622,7 +626,7 @@ function postEditorWorkspace(webview: vscode.Webview): void {
     return;
   }
   void webview.postMessage({
-    type: "tursorSeedWorkspace",
+    type: 'tursorSeedWorkspace',
     workspacePath: wp,
   });
 }
@@ -648,16 +652,16 @@ async function notifyFileChange(path: string) {
   }
   try {
     await fetch(`${origin}/context/update`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({ path }),
     });
 
-    console.log("[Tursor] File change sent:", path);
+    console.log('[Tursor] File change sent:', path);
   } catch (err) {
-    console.error("[Tursor] Failed to notify file change", err);
+    console.error('[Tursor] Failed to notify file change', err);
   }
 }
 
@@ -665,14 +669,14 @@ async function notifyFileChange(path: string) {
 
 function shouldIgnore(filePath: string): boolean {
   return (
-    filePath.includes("node_modules") ||
-    filePath.includes(".git") ||
-    filePath.includes("dist") ||
-    filePath.includes(".next") ||
-    filePath.includes("build") ||
+    filePath.includes('node_modules') ||
+    filePath.includes('.git') ||
+    filePath.includes('dist') ||
+    filePath.includes('.next') ||
+    filePath.includes('build') ||
     filePath.includes(`${path.sep}.tursor${path.sep}embeddings`) ||
-    filePath.includes("/.tursor/embeddings") ||
-    filePath.includes("\\.tursor\\embeddings")
+    filePath.includes('/.tursor/embeddings') ||
+    filePath.includes('\\.tursor\\embeddings')
   );
 }
 
@@ -685,43 +689,43 @@ function runTursorStart(
   const tursorDir = tursorHomeDir();
   const cliPath = tursorCliPath();
   if (!fs.existsSync(cliPath)) {
-    void webview.postMessage({ type: "tursorStartFinished", code: 1 });
+    void webview.postMessage({ type: 'tursorStartFinished', code: 1 });
     onSpawn(null);
     return;
   }
 
-  const child = spawn(cliPath, ["start"], {
+  const child = spawn(cliPath, ['start'], {
     cwd: tursorDir,
     env: envWithTursorCliOnPath(),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   onSpawn(child);
 
-  child.on("close", (code) => {
+  child.on('close', (code) => {
     void (async () => {
       const exitCode = code ?? 1;
       if (exitCode === 0) {
         const state = await checkTursorSetupState();
-        if (state.phase === "ready" && state.port) {
+        if (state.phase === 'ready' && state.port) {
           await webview.postMessage({
-            type: "tursorBackendResolved",
+            type: 'tursorBackendResolved',
             port: state.port,
             origin: `http://127.0.0.1:${state.port}`,
           });
         }
       }
       await webview.postMessage({
-        type: "tursorStartFinished",
+        type: 'tursorStartFinished',
         code: exitCode,
       });
       onSpawn(null);
     })();
   });
 
-  child.on("error", (err) => {
-    console.error("[Tursor] tursor start failed", err);
-    void webview.postMessage({ type: "tursorStartFinished", code: 1 });
+  child.on('error', (err) => {
+    console.error('[Tursor] tursor start failed', err);
+    void webview.postMessage({ type: 'tursorStartFinished', code: 1 });
     onSpawn(null);
   });
 }
@@ -733,63 +737,65 @@ function runInstallScript(
 ): void {
   const scriptUri = vscode.Uri.joinPath(
     extensionUri,
-    "scripts",
-    "install-tursor.sh",
+    'scripts',
+    'install-tursor.sh',
   );
 
   if (!fs.existsSync(scriptUri.fsPath)) {
     void vscode.window.showErrorMessage(
-      "install-tursor.sh is missing from extension",
+      'install-tursor.sh is missing from extension',
     );
-    void webview.postMessage({ type: "tursorInstallFinished", code: 1 });
+    void webview.postMessage({ type: 'tursorInstallFinished', code: 1 });
     onSpawn(null);
     return;
   }
 
   void webview.postMessage({
-    type: "tursorInstallStatus",
-    payload: { phase: "clone_repo", state: "start" },
+    type: 'tursorInstallStatus',
+    payload: { phase: 'clone_repo', state: 'start' },
   });
 
-  const bash = process.platform === "win32" ? "bash" : "/bin/bash";
+  const bash = process.platform === 'win32' ? 'bash' : '/bin/bash';
 
   const installEnv = envForInstallScript({ ...process.env });
 
-  const npmPath = resolveNpmExecutable(
-    installEnv[pathKeyForPlatform()] ?? "",
-  );
+  const npmPath = resolveNpmExecutable(installEnv[pathKeyForPlatform()] ?? '');
   if (npmPath) {
     installEnv.TURSOR_NPM = npmPath;
   } else {
     void vscode.window.showWarningMessage(
-      "Tursor install: npm was not found. Install Node.js or open Cursor from Terminal (so PATH includes npm), then retry setup.",
+      'Tursor install: npm was not found. Install Node.js or open Cursor from Terminal (so PATH includes npm), then retry setup.',
     );
   }
 
-  installEnv.TURSOR_FORCE_FULL_INSTALL = "1";
-  installEnv.TURSOR_CLI_PREFIX = path.join(os.homedir(), ".tursor", "npm-global");
+  installEnv.TURSOR_FORCE_FULL_INSTALL = '1';
+  installEnv.TURSOR_CLI_PREFIX = path.join(
+    os.homedir(),
+    '.tursor',
+    'npm-global',
+  );
 
   const bashArgs =
-    process.platform === "win32"
+    process.platform === 'win32'
       ? [scriptUri.fsPath]
-      : ["--noprofile", "--norc", scriptUri.fsPath];
+      : ['--noprofile', '--norc', scriptUri.fsPath];
 
   const child = spawn(bash, bashArgs, {
     env: installEnv,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   onSpawn(child);
 
-  let incompleteLine = "";
+  let incompleteLine = '';
 
   const onChunk = (chunk: Buffer) => {
-    incompleteLine += chunk.toString("utf8");
-    const lines = incompleteLine.split("\n");
-    incompleteLine = lines.pop() ?? "";
+    incompleteLine += chunk.toString('utf8');
+    const lines = incompleteLine.split('\n');
+    incompleteLine = lines.pop() ?? '';
 
     for (const line of lines) {
-      const trimmed = line.replace(/\r$/, "").trim();
+      const trimmed = line.replace(/\r$/, '').trim();
       if (!trimmed.includes(STATUS_PREFIX)) {
         continue;
       }
@@ -798,44 +804,44 @@ function runInstallScript(
         continue;
       }
       void webview.postMessage({
-        type: "tursorInstallStatus",
+        type: 'tursorInstallStatus',
         payload,
       });
     }
   };
 
-  child.stdout?.on("data", onChunk);
-  child.stderr?.on("data", onChunk);
+  child.stdout?.on('data', onChunk);
+  child.stderr?.on('data', onChunk);
 
-  child.on("error", (err) => {
-    console.error("[Tursor] install script spawn failed", err);
+  child.on('error', (err) => {
+    console.error('[Tursor] install script spawn failed', err);
     void webview.postMessage({
-      type: "tursorInstallStatus",
+      type: 'tursorInstallStatus',
       payload: {
-        phase: "clone_repo",
-        state: "done",
+        phase: 'clone_repo',
+        state: 'done',
         ok: false,
         message: err instanceof Error ? err.message : String(err),
       },
     });
-    void webview.postMessage({ type: "tursorInstallFinished", code: 1 });
+    void webview.postMessage({ type: 'tursorInstallFinished', code: 1 });
     onSpawn(null);
   });
 
-  child.on("close", (code) => {
+  child.on('close', (code) => {
     void (async () => {
       if (code === 0) {
         const resolved = await resolveBackendPortViaCli(null);
         if (resolved.running && resolved.port) {
           await webview.postMessage({
-            type: "tursorBackendResolved",
+            type: 'tursorBackendResolved',
             port: resolved.port,
             origin: resolved.origin,
           });
         }
       }
       await webview.postMessage({
-        type: "tursorInstallFinished",
+        type: 'tursorInstallFinished',
         code,
       });
       onSpawn(null);
@@ -849,16 +855,16 @@ function getWebviewHtml(
   extensionUri: vscode.Uri,
   webview: vscode.Webview,
 ): string {
-  const webviewRoot = vscode.Uri.joinPath(extensionUri, "media", "webview");
-  const indexPath = vscode.Uri.joinPath(webviewRoot, "index.html");
+  const webviewRoot = vscode.Uri.joinPath(extensionUri, 'media', 'webview');
+  const indexPath = vscode.Uri.joinPath(webviewRoot, 'index.html');
 
-  let html = fs.readFileSync(indexPath.fsPath, "utf8");
+  let html = fs.readFileSync(indexPath.fsPath, 'utf8');
 
   html = html.replace(
     /(src|href)="(\.\/[^"]+)"/g,
     (_match, attr: string, relPath: string) => {
-      const relative = relPath.replace(/^\.\//, "");
-      const assetUri = vscode.Uri.joinPath(webviewRoot, ...relative.split("/"));
+      const relative = relPath.replace(/^\.\//, '');
+      const assetUri = vscode.Uri.joinPath(webviewRoot, ...relative.split('/'));
       return `${attr}="${webview.asWebviewUri(assetUri)}"`;
     },
   );
@@ -874,7 +880,7 @@ function getWebviewHtml(
   `;
 
   html = html.replace(
-    "<head>",
+    '<head>',
     `<head><meta http-equiv="Content-Security-Policy" content="${csp}">`,
   );
 
@@ -885,27 +891,27 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
     void vscode.window.showWarningMessage(
-      "Tursor: open a folder in Cursor for workspace context and runs. You can still use Setup and pick a workspace in the panel.",
+      'Tursor: open a folder in Cursor for workspace context and runs. You can still use Setup and pick a workspace in the panel.',
     );
   }
 
   const panel = vscode.window.createWebviewPanel(
     PANEL_VIEW_TYPE,
-    "Tursor",
+    'Tursor',
     vscode.ViewColumn.One,
     {
       enableScripts: true,
       retainContextWhenHidden: true,
       localResourceRoots: [
-        vscode.Uri.joinPath(context.extensionUri, "media", "webview"),
-        vscode.Uri.joinPath(context.extensionUri, "media"),
+        vscode.Uri.joinPath(context.extensionUri, 'media', 'webview'),
+        vscode.Uri.joinPath(context.extensionUri, 'media'),
       ],
     },
   );
   panel.iconPath = vscode.Uri.joinPath(
     context.extensionUri,
-    "media",
-    "icon.png",
+    'media',
+    'icon.png',
   );
 
   let installChild: ChildProcess | null = null;
@@ -924,8 +930,8 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
     activeSocketBridges.delete(socketBridge);
     activePanelWebviews.delete(panel.webview);
     socketBridge.dispose();
-    installChild?.kill("SIGTERM");
-    startChild?.kill("SIGTERM");
+    installChild?.kill('SIGTERM');
+    startChild?.kill('SIGTERM');
     installChild = null;
     startChild = null;
   });
@@ -935,12 +941,12 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
 
     if (isProbeStatusMessage(message)) {
       const hintPort =
-        typeof message.hintPort === "number" && message.hintPort > 0
+        typeof message.hintPort === 'number' && message.hintPort > 0
           ? message.hintPort
           : null;
       void probeTursorStatus(hintPort).then((status) => {
         void panel.webview.postMessage({
-          type: "tursorStatusResult",
+          type: 'tursorStatusResult',
           requestId: message.requestId,
           status,
         });
@@ -951,7 +957,7 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
     if (isCheckTursorCliMessage(message)) {
       void checkTursorSetupState().then((result) => {
         void panel.webview.postMessage({
-          type: "tursorCliCheckResult",
+          type: 'tursorCliCheckResult',
           requestId: message.requestId,
           phase: result.phase,
           port: result.port,
@@ -971,7 +977,7 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
     }
 
     if (isRunInstallMessage(message)) {
-      installChild?.kill("SIGTERM");
+      installChild?.kill('SIGTERM');
       runInstallScript(panel.webview, context.extensionUri, (c) => {
         installChild = c;
       });
@@ -979,21 +985,21 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
     }
 
     if (isRunTursorStartMessage(message)) {
-      startChild?.kill("SIGTERM");
+      startChild?.kill('SIGTERM');
       runTursorStart(panel.webview, (c) => {
         startChild = c;
       });
       return;
     }
 
-    console.log("[Tursor webview]", message);
+    console.log('[Tursor webview]', message);
   });
 }
 
 /* ---------------- Activate ---------------- */
 
 export function activate(context: vscode.ExtensionContext): void {
-  const open = vscode.commands.registerCommand("tursor.openPanel", () => {
+  const open = vscode.commands.registerCommand('tursor.openPanel', () => {
     try {
       openTursorPanel(context);
     } catch (err) {
@@ -1001,7 +1007,7 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showErrorMessage(
         `Tursor: failed to open panel (${message})`,
       );
-      console.error("[Tursor] openPanel failed", err);
+      console.error('[Tursor] openPanel failed', err);
     }
   });
 
@@ -1017,7 +1023,7 @@ export function activate(context: vscode.ExtensionContext): void {
     broadcastEditorWorkspace();
   });
 
-  const watcher = vscode.workspace.createFileSystemWatcher("**/*");
+  const watcher = vscode.workspace.createFileSystemWatcher('**/*');
 
   const debounceMap = new Map<string, NodeJS.Timeout>();
 

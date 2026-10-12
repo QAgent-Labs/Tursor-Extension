@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTursorWebSocket } from "../context/useTursorWebSocket";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
-import { useTursorStatusProbe } from "./useTursorStatusProbe";
-import { configFieldsToPatch } from "../utils/tursorConfigPatch";
-import { useTursorConfigDraft } from "./useTursorConfigDraft";
-import { probeFrontendPort } from "../utils/probeFrontendPort";
-import { buildSessionConfig } from "../workspaceInit";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTursorWebSocket } from '../context/useTursorWebSocket';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
+import { useTursorStatusProbe } from './useTursorStatusProbe';
+import { configFieldsToPatch } from '../utils/tursorConfigPatch';
+import { useTursorConfigDraft } from './useTursorConfigDraft';
+import { probeFrontendPort } from '../utils/probeFrontendPort';
+import { buildSessionConfig } from '../workspaceInit';
 
 function continueDisabledReason(
   canContinue: boolean,
@@ -20,23 +20,23 @@ function continueDisabledReason(
 ): string | null {
   if (canContinue) return null;
   if (checkingFrontend) {
-    return "Verifying your test frontend is reachable on that port…";
+    return 'Verifying your test frontend is reachable on that port…';
   }
   if (probing) {
-    return "Checking whether the Tursor backend is running…";
+    return 'Checking whether the Tursor backend is running…';
   }
   if (waitingForSocket) {
-    return "Connecting to the Tursor backend over WebSocket…";
+    return 'Connecting to the Tursor backend over WebSocket…';
   }
   if (backendFailed) {
     return (
-      probeError ?? lastError ?? "Could not connect to the Tursor backend."
+      probeError ?? lastError ?? 'Could not connect to the Tursor backend.'
     );
   }
   if (!frontendPortTrimmed) {
-    return "Enter the port your test frontend runs on (e.g. 5173).";
+    return 'Enter the port your test frontend runs on (e.g. 5173).';
   }
-  return "Waiting for backend connection before you can continue.";
+  return 'Waiting for backend connection before you can continue.';
 }
 
 type Options = {
@@ -48,12 +48,8 @@ export function useConnectFlow(options: Options = {}) {
   const enabled = options.enabled ?? true;
   const navigate = useNavigate();
   const { status, connect, lastError, disconnect, send } = useTursorWebSocket();
-  const {
-    config,
-    setConfig,
-    editorWorkspacePath,
-    resolvedWorkspacePath,
-  } = useTursorAppConfig();
+  const { config, setConfig, editorWorkspacePath, resolvedWorkspacePath } =
+    useTursorAppConfig();
   const { probe } = useTursorStatusProbe();
   const [probing, setProbing] = useState(true);
   const [probeError, setProbeError] = useState<string | null>(null);
@@ -82,27 +78,30 @@ export function useConnectFlow(options: Options = {}) {
     resetDraft,
   } = useTursorConfigDraft(resolvedWorkspacePath, config);
 
-  const startConnectFlow = useCallback(async (gen: number) => {
-    setProbing(true);
-    setProbeError(null);
-    disconnectRef.current();
+  const startConnectFlow = useCallback(
+    async (gen: number) => {
+      setProbing(true);
+      setProbeError(null);
+      disconnectRef.current();
 
-    const hint = Number.parseInt(backendPort.trim(), 10);
-    const result = await probeRef.current(
-      Number.isFinite(hint) && hint > 0 ? hint : undefined,
-    );
-    if (gen !== connectGeneration.current) return;
-
-    setProbing(false);
-    if (!result.running || !result.port) {
-      setProbeError(
-        "Tursor backend is not running. Start it with `tursor start` and try again.",
+      const hint = Number.parseInt(backendPort.trim(), 10);
+      const result = await probeRef.current(
+        Number.isFinite(hint) && hint > 0 ? hint : undefined,
       );
-      return;
-    }
+      if (gen !== connectGeneration.current) return;
 
-    connectRef.current(`http://127.0.0.1:${result.port}`);
-  }, [backendPort]);
+      setProbing(false);
+      if (!result.running || !result.port) {
+        setProbeError(
+          'Tursor backend is not running. Start it with `tursor start` and try again.',
+        );
+        return;
+      }
+
+      connectRef.current(`http://127.0.0.1:${result.port}`);
+    },
+    [backendPort],
+  );
 
   const runConnectFlow = useCallback(async () => {
     const gen = ++connectGeneration.current;
@@ -126,15 +125,15 @@ export function useConnectFlow(options: Options = {}) {
 
   const waitingForSocket =
     probing ||
-    status === "idle" ||
-    status === "connecting" ||
-    status === "disconnected";
+    status === 'idle' ||
+    status === 'connecting' ||
+    status === 'disconnected';
 
-  const backendFailed = !probing && (status === "error" || Boolean(probeError));
+  const backendFailed = !probing && (status === 'error' || Boolean(probeError));
 
   const frontendPortTrimmed = frontendPort.trim();
   const canContinue =
-    status === "connected" &&
+    status === 'connected' &&
     !probing &&
     !backendFailed &&
     frontendPortTrimmed.length > 0 &&
@@ -154,16 +153,16 @@ export function useConnectFlow(options: Options = {}) {
   const statusMessage = backendFailed
     ? (probeError ??
       lastError ??
-      "Could not reach the Tursor backend over WebSocket.")
+      'Could not reach the Tursor backend over WebSocket.')
     : probing
-      ? "Checking Tursor backend status…"
+      ? 'Checking Tursor backend status…'
       : waitingForSocket
-        ? "Connecting to Tursor backend…"
-        : "Backend connected. Enter your test frontend port to continue.";
+        ? 'Connecting to Tursor backend…'
+        : 'Backend connected. Enter your test frontend port to continue.';
 
   const statusTitle = backendFailed
-    ? "Connection failed"
-    : "Establishing Connection";
+    ? 'Connection failed'
+    : 'Establishing Connection';
 
   const applyConfigAndReconnect = useCallback(() => {
     setConfig(
@@ -189,7 +188,7 @@ export function useConnectFlow(options: Options = {}) {
   const handleContinue = useCallback(async () => {
     const port = Number.parseInt(frontendPortTrimmed, 10);
     if (!Number.isFinite(port) || port <= 0) {
-      setFrontendPortError("Enter a valid port number.");
+      setFrontendPortError('Enter a valid port number.');
       return;
     }
 
@@ -222,7 +221,7 @@ export function useConnectFlow(options: Options = {}) {
       }),
     );
 
-    navigate("/run");
+    navigate('/run');
   }, [
     frontendPortTrimmed,
     workspacePath,

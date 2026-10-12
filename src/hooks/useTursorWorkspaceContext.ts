@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchCurrentContext } from "../api/tursorContext";
-import type { TursorWsStatus } from "../context/tursorWebSocketContext";
-import type { TursorCurrentContext } from "../types/workspaceInit";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
+import { useCallback, useEffect, useState } from 'react';
+import { fetchCurrentContext } from '../api/tursorContext';
+import type { TursorWsStatus } from '../context/tursorWebSocketContext';
+import type { TursorCurrentContext } from '../types/workspaceInit';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
 
 function applyContextResult(
   result: TursorCurrentContext | null,
@@ -15,7 +15,7 @@ function applyContextResult(
     return;
   }
   setContext(null);
-  setError("Could not load workspace context from the backend.");
+  setError('Could not load workspace context from the backend.');
 }
 
 /**
@@ -48,7 +48,7 @@ export function useTursorWorkspaceContext(wsStatus: TursorWsStatus) {
   }, [backendOrigin]);
 
   useEffect(() => {
-    if (wsStatus !== "connected") return;
+    if (wsStatus !== 'connected') return;
     let cancelled = false;
     void fetchCurrentContext(backendOrigin).then((result) => {
       if (cancelled) return;

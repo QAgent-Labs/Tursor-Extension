@@ -1,14 +1,14 @@
-import { useCallback } from "react";
-import type { TursorBackendStatus } from "../types/appConfig";
-import { DEFAULT_BACKEND_PORT } from "../constants/tursorConnection";
-import { getVsCodeApi } from "../vscodeApi";
-import { useTursorAppConfig } from "../context/useTursorAppConfig";
+import { useCallback } from 'react';
+import type { TursorBackendStatus } from '../types/appConfig';
+import { DEFAULT_BACKEND_PORT } from '../constants/tursorConnection';
+import { getVsCodeApi } from '../vscodeApi';
+import { useTursorAppConfig } from '../context/useTursorAppConfig';
 
 function parseHealthPort(body: unknown, hintPort: number): number {
   if (
-    typeof body === "object" &&
+    typeof body === 'object' &&
     body !== null &&
-    typeof (body as { port?: unknown }).port === "number"
+    typeof (body as { port?: unknown }).port === 'number'
   ) {
     const p = (body as { port: number }).port;
     if (p > 0) return p;
@@ -16,9 +16,7 @@ function parseHealthPort(body: unknown, hintPort: number): number {
   return hintPort;
 }
 
-async function probeViaHttp(
-  hintPort: number,
-): Promise<TursorBackendStatus> {
+async function probeViaHttp(hintPort: number): Promise<TursorBackendStatus> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 2_500);
   try {
@@ -43,7 +41,7 @@ function probeViaExtensionHost(
 ): Promise<TursorBackendStatus> {
   return new Promise((resolve) => {
     const hint =
-      typeof hintPort === "number" && hintPort > 0
+      typeof hintPort === 'number' && hintPort > 0
         ? hintPort
         : DEFAULT_BACKEND_PORT;
 
@@ -75,25 +73,25 @@ function probeViaExtensionHost(
         status?: TursorBackendStatus;
       };
       if (
-        data?.type !== "tursorStatusResult" ||
+        data?.type !== 'tursorStatusResult' ||
         data.requestId !== requestId ||
         !data.status
       ) {
         return;
       }
-      window.removeEventListener("message", onMsg);
+      window.removeEventListener('message', onMsg);
       finish(data.status);
     };
 
-    window.addEventListener("message", onMsg);
+    window.addEventListener('message', onMsg);
     vscode.postMessage({
-      command: "probeTursorStatus",
+      command: 'probeTursorStatus',
       requestId,
       hintPort: hint,
     });
 
     window.setTimeout(() => {
-      window.removeEventListener("message", onMsg);
+      window.removeEventListener('message', onMsg);
       void probeViaHttp(hint).then(finish);
     }, 3_500);
   });
@@ -105,20 +103,23 @@ function probeViaExtensionHost(
 export function useTursorStatusProbe() {
   const { config, setBackendStatus, setConfig } = useTursorAppConfig();
 
-  const probe = useCallback(async (hintPort?: number): Promise<TursorBackendStatus> => {
-    const hint =
-      hintPort && hintPort > 0
-        ? hintPort
-        : config.backendPort && config.backendPort > 0
-          ? config.backendPort
-          : DEFAULT_BACKEND_PORT;
-    const status = await probeViaExtensionHost(hint);
-    setBackendStatus(status);
-    if (status.running && status.port) {
-      setConfig({ backendPort: status.port });
-    }
-    return status;
-  }, [config.backendPort, setBackendStatus, setConfig]);
+  const probe = useCallback(
+    async (hintPort?: number): Promise<TursorBackendStatus> => {
+      const hint =
+        hintPort && hintPort > 0
+          ? hintPort
+          : config.backendPort && config.backendPort > 0
+            ? config.backendPort
+            : DEFAULT_BACKEND_PORT;
+      const status = await probeViaExtensionHost(hint);
+      setBackendStatus(status);
+      if (status.running && status.port) {
+        setConfig({ backendPort: status.port });
+      }
+      return status;
+    },
+    [config.backendPort, setBackendStatus, setConfig],
+  );
 
   return { probe };
 }

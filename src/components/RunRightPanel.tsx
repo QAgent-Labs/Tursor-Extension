@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { RefreshCw, Loader2 } from "lucide-react";
-import { RunsGallery, type RunsPreview } from "./RunsGallery";
-import { RunLogsPanel } from "./RunLogsPanel";
-import { TursorPathText } from "./TursorPathText";
-import { tursorSecondaryButtonClassName } from "./tursorButtonClasses";
-import type { SuiteGroup } from "../runs/suiteGroups";
-import type { ContextPanelPhase } from "../types/runChat";
-import type { RunLogEntry } from "../types/runLogs";
+import { useState } from 'react';
+import { RefreshCw, Loader2 } from 'lucide-react';
+import { RunsGallery, type RunsPreview } from './RunsGallery';
+import { RunLogsPanel } from './RunLogsPanel';
+import { TursorPathText } from './TursorPathText';
+import { tursorSecondaryButtonClassName } from './tursorButtonClasses';
+import type { SuiteGroup } from '../runs/suiteGroups';
+import type { ContextPanelPhase } from '../types/runChat';
+import type { RunLogEntry } from '../types/runLogs';
 
 type Props = {
   conversationId: string | null;
@@ -43,10 +43,10 @@ export function RunRightPanel({
 }: Props) {
   const [logsExpanded, setLogsExpanded] = useState(true);
   const isHistoryView = preview != null;
-  const isMissing = phase === "missing_config";
-  const isError = phase === "error";
-  const isBuilding = phase === "building" || phase === "mapping";
-  const isMapping = phase === "mapping";
+  const isMissing = phase === 'missing_config';
+  const isError = phase === 'error';
+  const isBuilding = phase === 'building' || phase === 'mapping';
+  const isMapping = phase === 'mapping';
   const showErrorOverlay = !isHistoryView && (isMissing || isError);
 
   const screenshotsSection = (
@@ -69,14 +69,14 @@ export function RunRightPanel({
                 {isMissing ? (
                   <TursorPathText text=".tursor folder missing in the directory path" />
                 ) : (
-                  "Run failed"
+                  'Run failed'
                 )}
               </h3>
               <p className="mt-3 text-sm text-slate-400">
                 {isMissing ? (
                   <TursorPathText text="Add `.tursor/config.json` with required `supabase` settings (url, serviceRoleKey, storageBucket), then retry." />
                 ) : (
-                  (errorMessage ?? "Something went wrong during the run.")
+                  (errorMessage ?? 'Something went wrong during the run.')
                 )}
               </p>
               <button
@@ -90,17 +90,22 @@ export function RunRightPanel({
             </div>
           </div>
         ) : null}
-        {isBuilding && groups.length === 0 && !isHistoryView && !showErrorOverlay ? (
+        {isBuilding &&
+        groups.length === 0 &&
+        !isHistoryView &&
+        !showErrorOverlay ? (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-cyan-500/30 bg-slate-950/85 px-6 py-8 text-center backdrop-blur-sm">
             <div className="max-w-lg">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-cyan-400" />
               <h3 className="mt-4 text-lg font-semibold text-white sm:text-xl">
-                {isMapping ? "Building the feature map" : "Creating code context"}
+                {isMapping
+                  ? 'Building the feature map'
+                  : 'Creating code context'}
               </h3>
               <p className="mt-3 text-sm text-slate-400">
                 {isMapping
-                  ? "Features are being read from the indexed code. Please wait before running tests."
-                  : "Workspace embeddings are being built. Please wait before running tests."}
+                  ? 'Features are being read from the indexed code. Please wait before running tests.'
+                  : 'Workspace embeddings are being built. Please wait before running tests.'}
               </p>
             </div>
           </div>
@@ -129,8 +134,8 @@ export function RunRightPanel({
     <div
       className={`grid min-h-0 flex-1 gap-3 overflow-hidden ${
         logsExpanded
-          ? "grid-rows-[minmax(0,65fr)_minmax(0,35fr)]"
-          : "grid-rows-[minmax(0,1fr)_auto]"
+          ? 'grid-rows-[minmax(0,65fr)_minmax(0,35fr)]'
+          : 'grid-rows-[minmax(0,1fr)_auto]'
       }`}
     >
       {screenshotsSection}

@@ -4,20 +4,20 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from "react";
+} from 'react';
 import {
   defaultAppConfig,
   resolveWorkspacePath,
   type TursorAppConfig,
   type TursorBackendStatus,
-} from "../types/appConfig";
-import { getVsCodeApi } from "../vscodeApi";
+} from '../types/appConfig';
+import { getVsCodeApi } from '../vscodeApi';
 import {
   TursorAppConfigContext,
   type TursorAppConfigContextValue,
-} from "./tursorAppConfigContext";
+} from './tursorAppConfigContext';
 
-const STORAGE_KEY = "tursorAppConfig";
+const STORAGE_KEY = 'tursorAppConfig';
 
 function loadInitialConfig(): TursorAppConfig {
   const base = defaultAppConfig();
@@ -27,18 +27,18 @@ function loadInitialConfig(): TursorAppConfig {
       [STORAGE_KEY]?: TursorAppConfig;
     } | null;
     const fromState = saved?.[STORAGE_KEY];
-    if (fromState && typeof fromState === "object") {
+    if (fromState && typeof fromState === 'object') {
       return {
         workspacePath:
-          typeof fromState.workspacePath === "string"
+          typeof fromState.workspacePath === 'string'
             ? fromState.workspacePath
             : base.workspacePath,
         backendPort:
-          typeof fromState.backendPort === "number"
+          typeof fromState.backendPort === 'number'
             ? fromState.backendPort
             : base.backendPort,
         frontendPort:
-          typeof fromState.frontendPort === "number"
+          typeof fromState.frontendPort === 'number'
             ? fromState.frontendPort
             : base.frontendPort,
       };
@@ -51,15 +51,15 @@ function loadInitialConfig(): TursorAppConfig {
       const parsed = JSON.parse(raw) as Partial<TursorAppConfig>;
       return {
         workspacePath:
-          typeof parsed.workspacePath === "string"
+          typeof parsed.workspacePath === 'string'
             ? parsed.workspacePath
             : base.workspacePath,
         backendPort:
-          typeof parsed.backendPort === "number"
+          typeof parsed.backendPort === 'number'
             ? parsed.backendPort
             : base.backendPort,
         frontendPort:
-          typeof parsed.frontendPort === "number"
+          typeof parsed.frontendPort === 'number'
             ? parsed.frontendPort
             : base.frontendPort,
       };
@@ -102,7 +102,7 @@ export function TursorAppConfigProvider({ children }: { children: ReactNode }) {
         type?: string;
         workspacePath?: string | null;
       };
-      if (data?.type !== "tursorSeedWorkspace" || !data.workspacePath) {
+      if (data?.type !== 'tursorSeedWorkspace' || !data.workspacePath) {
         return;
       }
       const path = data.workspacePath.trim();
@@ -110,9 +110,9 @@ export function TursorAppConfigProvider({ children }: { children: ReactNode }) {
 
       setEditorWorkspacePath(path);
     };
-    window.addEventListener("message", onMsg);
-    vscode.postMessage({ command: "requestDefaultWorkspace" });
-    return () => window.removeEventListener("message", onMsg);
+    window.addEventListener('message', onMsg);
+    vscode.postMessage({ command: 'requestDefaultWorkspace' });
+    return () => window.removeEventListener('message', onMsg);
   }, []);
 
   const resolvedWorkspacePath = useMemo(

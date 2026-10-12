@@ -1,11 +1,11 @@
-import { createContext } from "react";
+import { createContext } from 'react';
 
 export type TursorWsStatus =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "disconnected"
-  | "error";
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'error';
 
 /**
  * Global Socket.IO client surface (see `TursorWebSocketProvider`).
