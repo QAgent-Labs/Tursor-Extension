@@ -1,21 +1,21 @@
-import { useCallback, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "motion/react";
-import { AnimatedBackground } from "../components/AnimatedBackground";
-import ScriptAnimatedViewer from "../components/ScriptAnimatedWriter";
-import TursorHeader from "../components/TursorHeader";
-import { SetupRightPanel } from "../components/SetupRightPanel";
-import { ConnectRightPanel } from "../components/ConnectRightPanel";
-import { SetupStepDots } from "../components/SetupStepDots";
-import { useSetupFlow } from "../hooks/useSetupFlow";
-import { useConnectFlow } from "../hooks/useConnectFlow";
+import { useCallback, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import { AnimatedBackground } from '../components/AnimatedBackground';
+import ScriptAnimatedViewer from '../components/ScriptAnimatedWriter';
+import TursorHeader from '../components/TursorHeader';
+import { SetupRightPanel } from '../components/SetupRightPanel';
+import { ConnectRightPanel } from '../components/ConnectRightPanel';
+import { SetupStepDots } from '../components/SetupStepDots';
+import { useSetupFlow } from '../hooks/useSetupFlow';
+import { useConnectFlow } from '../hooks/useConnectFlow';
 
 const SLIDE_EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function InitialSetupPage() {
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState<1 | 2>(() =>
-    searchParams.get("step") === "connect" ? 2 : 1,
+    searchParams.get('step') === 'connect' ? 2 : 1,
   );
 
   const advanceToConnect = useCallback(() => {
@@ -85,7 +85,9 @@ export default function InitialSetupPage() {
                       frontendPortError={connect.frontendPortError}
                       checkingFrontend={connect.checkingFrontend}
                       canContinue={connect.canContinue}
-                      continueDisabledReason={connect.continueDisabledReasonText}
+                      continueDisabledReason={
+                        connect.continueDisabledReasonText
+                      }
                       onContinue={() => void connect.handleContinue()}
                       onRetry={connect.handleRetry}
                     />

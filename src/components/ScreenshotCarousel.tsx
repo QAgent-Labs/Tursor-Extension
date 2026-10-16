@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, ChevronLeft, ChevronRight, ImageOff, XCircle } from "lucide-react";
-import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
-import { tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
-import type { RunSessionStatus } from "../types/runHistory";
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
+  XCircle,
+} from 'lucide-react';
+import { DisabledReasonTooltip } from './DisabledReasonTooltip';
+import { tursorSecondaryIconButtonClassName } from './tursorButtonClasses';
+import type { RunSessionStatus } from '../types/runHistory';
 
 type InnerProps = {
   urls: string[];
@@ -11,7 +17,7 @@ type InnerProps = {
 };
 
 function RunStatusPill({ status }: { status: RunSessionStatus }) {
-  if (status === "success") {
+  if (status === 'success') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-black shadow-lg shadow-black/30">
         <CheckCircle2 className="h-3.5 w-3.5 text-black" aria-hidden />
@@ -19,7 +25,7 @@ function RunStatusPill({ status }: { status: RunSessionStatus }) {
       </span>
     );
   }
-  if (status === "fail") {
+  if (status === 'fail') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2.5 py-1 text-[11px] font-medium text-black shadow-lg shadow-black/30">
         <XCircle className="h-3.5 w-3.5 text-black" aria-hidden />
@@ -46,7 +52,7 @@ function ScreenshotCarouselInner({ urls, status }: InnerProps) {
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="relative h-full min-h-0 overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/50">
-        {status === "success" || status === "fail" ? (
+        {status === 'success' || status === 'fail' ? (
           <div className="absolute right-3 top-3 z-20">
             <RunStatusPill status={status} />
           </div>
@@ -69,7 +75,7 @@ function ScreenshotCarouselInner({ urls, status }: InnerProps) {
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-slate-950/90 to-transparent px-3 pb-3 pt-8">
           <DisabledReasonTooltip
             disabled={safeIndex === 0}
-            reason={safeIndex === 0 ? "Already at the first screenshot." : null}
+            reason={safeIndex === 0 ? 'Already at the first screenshot.' : null}
           >
             <button
               type="button"
@@ -88,15 +94,13 @@ function ScreenshotCarouselInner({ urls, status }: InnerProps) {
             disabled={safeIndex >= urls.length - 1}
             reason={
               safeIndex >= urls.length - 1
-                ? "Already at the last screenshot."
+                ? 'Already at the last screenshot.'
                 : null
             }
           >
             <button
               type="button"
-              onClick={() =>
-                setIndex((i) => Math.min(urls.length - 1, i + 1))
-              }
+              onClick={() => setIndex((i) => Math.min(urls.length - 1, i + 1))}
               disabled={safeIndex >= urls.length - 1}
               className={`${tursorSecondaryIconButtonClassName} disabled:opacity-40`}
               aria-label="Next screenshot"
@@ -131,7 +135,7 @@ export function ScreenshotCarousel({ urls, sessionKey, status }: Props) {
 
   return (
     <ScreenshotCarouselInner
-      key={sessionKey ?? "default"}
+      key={sessionKey ?? 'default'}
       urls={urls}
       status={status}
     />

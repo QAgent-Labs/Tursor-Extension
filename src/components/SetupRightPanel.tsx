@@ -1,14 +1,14 @@
-import { motion } from "motion/react";
-import { ChevronRight, Download, Play, Zap } from "lucide-react";
-import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
-import { InstallTimelineSteps } from "./InstallTimelineSteps";
-import { TursorPathText } from "./TursorPathText";
+import { motion } from 'motion/react';
+import { ChevronRight, Download, Play, Zap } from 'lucide-react';
+import { DisabledReasonTooltip } from './DisabledReasonTooltip';
+import { InstallTimelineSteps } from './InstallTimelineSteps';
+import { TursorPathText } from './TursorPathText';
 import {
   tursorPrimaryButtonClassName,
   tursorPrimaryButtonHalfWrapperClassName,
-} from "./tursorButtonClasses";
-import type { StepVisualState } from "../types/installStatus";
-import type { InstallPhase } from "../types/installStatus";
+} from './tursorButtonClasses';
+import type { StepVisualState } from '../types/installStatus';
+import type { InstallPhase } from '../types/installStatus';
 
 type Props = {
   setupBlurb: string;
@@ -31,14 +31,14 @@ function SetupBlurb({ text }: { text: string }) {
 }
 
 function renderLeadingIcon(label: string) {
-  const className = "h-4 w-4 shrink-0 opacity-95";
-  if (label.includes("Connect")) {
+  const className = 'h-4 w-4 shrink-0 opacity-95';
+  if (label.includes('Connect')) {
     return <ChevronRight className={className} aria-hidden />;
   }
   if (
-    label.includes("Start") ||
-    label.includes("Checking") ||
-    label.includes("Running")
+    label.includes('Start') ||
+    label.includes('Checking') ||
+    label.includes('Running')
   ) {
     return <Play className={className} aria-hidden />;
   }
@@ -90,7 +90,10 @@ export function SetupRightPanel({
             >
               {renderLeadingIcon(primaryLabel)}
               <span className="min-w-0 flex-1 text-center">{primaryLabel}</span>
-              <ChevronRight className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
+              <ChevronRight
+                className="h-4 w-4 shrink-0 opacity-95"
+                aria-hidden
+              />
             </button>
           </DisabledReasonTooltip>
         </div>

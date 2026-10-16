@@ -1,4 +1,4 @@
-import tursorPng from "../assets/Tursor.png";
+import tursorPng from '../assets/Tursor.png';
 
 type TursorLogoProps = {
   className?: string;
@@ -10,8 +10,8 @@ type TursorLogoProps = {
  * (e.g. `h-10 w-10 object-contain`).
  */
 export function TursorLogo({
-  className = "h-full w-full object-contain",
-  alt = "Tursor",
+  className = 'h-full w-full object-contain',
+  alt = 'Tursor',
 }: TursorLogoProps) {
   return (
     <img src={tursorPng} alt={alt} className={className} draggable={false} />

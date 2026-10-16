@@ -1,5 +1,5 @@
-import { Fragment, useCallback, useMemo, useRef } from "react";
-import { motion } from "motion/react";
+import { Fragment, useCallback, useMemo, useRef } from 'react';
+import { motion } from 'motion/react';
 import {
   Check,
   FolderGit2,
@@ -9,8 +9,8 @@ import {
   Server,
   Brain,
   Boxes,
-} from "lucide-react";
-import { InstallForkArrow } from "./InstallForkArrow";
+} from 'lucide-react';
+import { InstallForkArrow } from './InstallForkArrow';
 import {
   AI_INSTALL_STEPS,
   BACKEND_INSTALL_STEPS,
@@ -18,8 +18,8 @@ import {
   isTerminalStepState,
   type InstallPhase,
   type StepVisualState,
-} from "../types/installStatus";
-import { installStepLabel } from "../utils/installStepLabels";
+} from '../types/installStatus';
+import { installStepLabel } from '../utils/installStepLabels';
 
 const PHASE_ICONS: Record<InstallPhase, typeof FolderGit2> = {
   clone_repo: FolderGit2,
@@ -32,41 +32,41 @@ const PHASE_ICONS: Record<InstallPhase, typeof FolderGit2> = {
   ensure_ai_running: Brain,
 };
 
-const RAIL_WIDTH = "w-5";
-const NODE_SIZE = "h-2.5 w-2.5";
-const ROW_HEIGHT = "min-h-[2.75rem]";
+const RAIL_WIDTH = 'w-5';
+const NODE_SIZE = 'h-2.5 w-2.5';
+const ROW_HEIGHT = 'min-h-[2.75rem]';
 
 const DASH_STAGGER_SEC = 0.14;
 const DASH_DURATION_SEC = 0.22;
 
 function nodeGlowClass(status: StepVisualState, isActive: boolean): string {
-  if (status === "running" || isActive) {
-    return "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.65)] ring-cyan-400/60";
+  if (status === 'running' || isActive) {
+    return 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.65)] ring-cyan-400/60';
   }
-  if (status === "success") {
-    return "bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)] ring-violet-400/50";
+  if (status === 'success') {
+    return 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)] ring-violet-400/50';
   }
-  if (status === "failure") {
-    return "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)] ring-rose-400/50";
+  if (status === 'failure') {
+    return 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)] ring-rose-400/50';
   }
-  if (status === "skipped") {
-    return "bg-slate-500 ring-slate-400/40";
+  if (status === 'skipped') {
+    return 'bg-slate-500 ring-slate-400/40';
   }
-  return "bg-slate-700 ring-slate-600/50";
+  return 'bg-slate-700 ring-slate-600/50';
 }
 
 function StatusIndicator({ status }: { status: StepVisualState }) {
-  if (status === "running") {
+  if (status === 'running') {
     return <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan-400" />;
   }
-  if (status === "success") {
+  if (status === 'success') {
     return (
       <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 ring-1 ring-emerald-500/40">
         <Check className="h-3 w-3 text-emerald-400" strokeWidth={2.5} />
       </div>
     );
   }
-  if (status === "failure" || status === "skipped") {
+  if (status === 'failure' || status === 'skipped') {
     return (
       <div className="h-4 w-4 shrink-0 rounded-full bg-slate-700/40 ring-1 ring-slate-600/40" />
     );
@@ -85,7 +85,10 @@ function VerticalDashConnector({ onComplete }: { onComplete: () => void }) {
   }, [onComplete]);
 
   return (
-    <div className={`flex ${RAIL_WIDTH} shrink-0 flex-col items-center py-0.5`} aria-hidden>
+    <div
+      className={`flex ${RAIL_WIDTH} shrink-0 flex-col items-center py-0.5`}
+      aria-hidden
+    >
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
@@ -124,7 +127,7 @@ function TimelineRow({
   const label = installStepLabel(phase, status);
 
   return (
-    <div className={`flex gap-2 ${isLast ? "" : "mb-3"}`}>
+    <div className={`flex gap-2 ${isLast ? '' : 'mb-3'}`}>
       <div className={`flex ${RAIL_WIDTH} shrink-0 flex-col items-center`}>
         <div className={`flex ${ROW_HEIGHT} items-center justify-center`}>
           <div
@@ -148,7 +151,7 @@ function TimelineRow({
         </div>
         <span
           className={`min-w-0 flex-1 text-left text-xs leading-snug sm:text-[0.8125rem] ${
-            status === "pending" ? "text-slate-500" : "text-slate-200"
+            status === 'pending' ? 'text-slate-500' : 'text-slate-200'
           }`}
         >
           {label}

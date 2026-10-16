@@ -1,4 +1,4 @@
-export type RunSessionStatus = "running" | "success" | "fail";
+export type RunSessionStatus = 'running' | 'success' | 'fail';
 
 export type RunSession = {
   id: string;
@@ -17,6 +17,6 @@ export function createRunSessionId(): string {
 }
 
 export function shortSessionId(id: string): string {
-  const parts = id.split("-");
+  const parts = id.split('-');
   return parts[parts.length - 1] ?? id.slice(0, 8);
 }

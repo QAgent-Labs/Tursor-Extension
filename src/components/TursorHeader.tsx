@@ -1,7 +1,7 @@
-import { HomeIcon } from "lucide-react";
-import { TursorLogo } from "./TursorLogo";
-import { tursorWordmarkGradientClassName } from "./tursorWordmarkClasses";
-import { useNavigate } from "react-router-dom";
+import { HomeIcon } from 'lucide-react';
+import { TursorLogo } from './TursorLogo';
+import { tursorWordmarkGradientClassName } from './tursorWordmarkClasses';
+import { useNavigate } from 'react-router-dom';
 
 export default function TursorHeader({
   showHomeButton = true,
@@ -23,7 +23,7 @@ export default function TursorHeader({
       </div>
       {showHomeButton ? (
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate('/')}
           className={`flex shrink-0 flex-row items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-bold sm:gap-2 sm:px-4 ${tursorWordmarkGradientClassName}`}
         >
           <HomeIcon className="h-5 w-5 shrink-0 text-cyan-500 sm:h-5" />

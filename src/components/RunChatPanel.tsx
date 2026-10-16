@@ -5,16 +5,30 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
-} from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, History, MessageSquare, Play, ScrollText, Send, SquarePen, Loader2, X } from "lucide-react";
-import { TursorLogo } from "./TursorLogo";
-import { tursorWordmarkTextGradientClassName } from "./tursorWordmarkClasses";
-import { ConversationHistoryList } from "./ConversationHistoryList";
-import { ConversationSummaryPanel } from "./ConversationSummaryPanel";
-import { FormattedAiText } from "./FormattedAiText";
-import { DisabledReasonTooltip } from "./DisabledReasonTooltip";
-import { tursorPrimaryButtonClassName, tursorPrimaryIconButtonClassName, tursorSecondaryIconButtonClassName } from "./tursorButtonClasses";
+} from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  ArrowRight,
+  History,
+  MessageSquare,
+  Play,
+  ScrollText,
+  Send,
+  SquarePen,
+  Loader2,
+  X,
+} from 'lucide-react';
+import { TursorLogo } from './TursorLogo';
+import { tursorWordmarkTextGradientClassName } from './tursorWordmarkClasses';
+import { ConversationHistoryList } from './ConversationHistoryList';
+import { ConversationSummaryPanel } from './ConversationSummaryPanel';
+import { FormattedAiText } from './FormattedAiText';
+import { DisabledReasonTooltip } from './DisabledReasonTooltip';
+import {
+  tursorPrimaryButtonClassName,
+  tursorPrimaryIconButtonClassName,
+  tursorSecondaryIconButtonClassName,
+} from './tursorButtonClasses';
 import {
   getConversation,
   listConversations,
@@ -27,18 +41,18 @@ import {
   type ConversationListItem,
   type ConversationSummary,
   type SuiteCaseView,
-} from "../api/chat";
-import type { ChatMessage } from "../types/runChat";
-import type { RunSession } from "../types/runHistory";
-import { useTursorWebSocket } from "../context/useTursorWebSocket";
+} from '../api/chat';
+import type { ChatMessage } from '../types/runChat';
+import type { RunSession } from '../types/runHistory';
+import { useTursorWebSocket } from '../context/useTursorWebSocket';
 
-type PanelView = "chat" | "history";
+type PanelView = 'chat' | 'history';
 
-const THINKING_PHRASES = ["Thinking", "Checking the code", "Writing a reply"];
+const THINKING_PHRASES = ['Thinking', 'Checking the code', 'Writing a reply'];
 
 const emptySummary: ConversationSummary = {
-  case: "",
-  brief_summary: "",
+  case: '',
+  brief_summary: '',
   plans: [],
   cdp_runs: [],
 };
@@ -62,7 +76,10 @@ function withLocalRun(
   return { ...summary, cdp_runs: [...summary.cdp_runs, run] };
 }
 
-function mergeRuns(server: CdpRunRecord[], local: CdpRunRecord[]): CdpRunRecord[] {
+function mergeRuns(
+  server: CdpRunRecord[],
+  local: CdpRunRecord[],
+): CdpRunRecord[] {
   const merged = [...server];
   for (const run of local) {
     const id = runCaseId(run);
@@ -118,9 +135,9 @@ export function RunChatPanel({
   const formId = useId();
   const startedSession = useRef<number | null>(null);
 
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [panelView, setPanelView] = useState<PanelView>("chat");
+  const [panelView, setPanelView] = useState<PanelView>('chat');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatSession, setChatSession] = useState(0);
   const [summary, setSummary] = useState<ConversationSummary>(emptySummary);
@@ -141,7 +158,7 @@ export function RunChatPanel({
   runsRef.current = runs;
   runningCaseRef.current = runningCaseId;
 
-  const connected = status === "connected";
+  const connected = status === 'connected';
 
   useEffect(() => {
     onConversationChange?.(conversationId);
@@ -159,27 +176,30 @@ export function RunChatPanel({
 
   useEffect(() => {
     return subscribe((data) => {
-      if (!data || typeof data !== "object") return;
-      if ((data as { type?: string }).type !== "complete") return;
+      if (!data || typeof data !== 'object') return;
+      if ((data as { type?: string }).type !== 'complete') return;
       setHistoryTick((tick) => tick + 1);
       const caseId = runningCaseRef.current;
       const outcome =
-        (data as { status?: string }).status === "success" ? "passed" : "failure";
+        (data as { status?: string }).status === 'success'
+          ? 'passed'
+          : 'failure';
       if (caseId) {
         const session = runsRef.current.find(
-          (item) => item.caseId === caseId && item.conversationId === conversationId,
+          (item) =>
+            item.caseId === caseId && item.conversationId === conversationId,
         );
         setSummary((prev) =>
           withLocalRun(prev, {
             cdp_step_id: caseId,
             case_id: caseId,
             status: outcome,
-            status_message: "",
+            status_message: '',
             screenshots: session?.screenshots ?? [],
-            response_id: session?.responseId ?? "",
-            feature: session?.feature ?? "",
-            title: session?.caseTitle ?? "",
-            kind: "",
+            response_id: session?.responseId ?? '',
+            feature: session?.feature ?? '',
+            title: session?.caseTitle ?? '',
+            kind: '',
           }),
         );
         setRunningCaseId(null);
@@ -210,7 +230,7 @@ export function RunChatPanel({
   useEffect(() => {
     const el = draftRef.current;
     if (!el) return;
-    el.style.height = "auto";
+    el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
   }, [draft]);
 
@@ -231,8 +251,8 @@ export function RunChatPanel({
         setSummary(turn.summary);
         setMessages([
           {
-            id: turn.responseId || createId("assistant"),
-            role: "assistant",
+            id: turn.responseId || createId('assistant'),
+            role: 'assistant',
             text: turn.reply,
             timestamp: Date.now(),
             suite: turn.suite,
@@ -241,11 +261,12 @@ export function RunChatPanel({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        const text = err instanceof Error ? err.message : "Could not start chat.";
+        const text =
+          err instanceof Error ? err.message : 'Could not start chat.';
         setMessages([
           {
-            id: createId("err"),
-            role: "system",
+            id: createId('err'),
+            role: 'system',
             text,
             timestamp: Date.now(),
           },
@@ -268,8 +289,8 @@ export function RunChatPanel({
 
   const startNewConversation = () => {
     if (!connected || !backendOrigin || !workspacePath) return;
-    setPanelView("chat");
-    setDraft("");
+    setPanelView('chat');
+    setDraft('');
     setConversationId(null);
     setSummary(emptySummary);
     setMessages([]);
@@ -280,29 +301,29 @@ export function RunChatPanel({
     const text = draft.trim();
     if (!text || busy) return;
 
-    const id = createId("user");
+    const id = createId('user');
     setMessages((prev) => [
       ...prev,
       {
         id,
-        role: "user",
+        role: 'user',
         text,
         timestamp: Date.now(),
         status:
           connected && conversationId && backendOrigin && workspacePath
             ? undefined
-            : "failed",
+            : 'failed',
       },
     ]);
-    setDraft("");
+    setDraft('');
 
     if (!connected || !conversationId || !backendOrigin || !workspacePath) {
       setMessages((prev) => [
         ...prev,
         {
-          id: createId("err"),
-          role: "system",
-          text: "Chat is not ready. Wait for the welcome message, or reconnect.",
+          id: createId('err'),
+          role: 'system',
+          text: 'Chat is not ready. Wait for the welcome message, or reconnect.',
           timestamp: Date.now(),
         },
       ]);
@@ -318,10 +339,12 @@ export function RunChatPanel({
       .then((turn) => {
         setSummary(turn.summary);
         setMessages((prev) => [
-          ...prev.map((m) => (m.id === id ? { ...m, status: "sent" as const } : m)),
+          ...prev.map((m) =>
+            m.id === id ? { ...m, status: 'sent' as const } : m,
+          ),
           {
-            id: turn.responseId || createId("assistant"),
-            role: "assistant" as const,
+            id: turn.responseId || createId('assistant'),
+            role: 'assistant' as const,
             text: turn.reply,
             timestamp: Date.now(),
             suite: turn.suite,
@@ -329,23 +352,23 @@ export function RunChatPanel({
         ]);
       })
       .catch((err: unknown) => {
-        const detail = err instanceof Error ? err.message : "Request failed";
+        const detail = err instanceof Error ? err.message : 'Request failed';
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === id ? { ...m, status: "failed" as const } : m,
-          ).concat({
-            id: createId("err"),
-            role: "system" as const,
-            text: detail,
-            timestamp: Date.now(),
-          }),
+          prev
+            .map((m) => (m.id === id ? { ...m, status: 'failed' as const } : m))
+            .concat({
+              id: createId('err'),
+              role: 'system' as const,
+              text: detail,
+              timestamp: Date.now(),
+            }),
         );
       })
       .finally(() => setBusy(false));
   }, [draft, busy, connected, conversationId, backendOrigin, workspacePath]);
 
   useEffect(() => {
-    if (panelView !== "history" || !backendOrigin || !workspacePath) return;
+    if (panelView !== 'history' || !backendOrigin || !workspacePath) return;
     let cancelled = false;
     setHistoryLoading(true);
     setHistoryError(null);
@@ -356,7 +379,7 @@ export function RunChatPanel({
       .catch((err: unknown) => {
         if (cancelled) return;
         setHistoryError(
-          err instanceof Error ? err.message : "Could not load conversations.",
+          err instanceof Error ? err.message : 'Could not load conversations.',
         );
       })
       .finally(() => {
@@ -369,9 +392,9 @@ export function RunChatPanel({
 
   const openConversation = (id: string, focusCaseId?: string) => {
     if (!backendOrigin) return;
-    const focus = focusCaseId?.trim() || "";
+    const focus = focusCaseId?.trim() || '';
     if (id === conversationId) {
-      setPanelView("chat");
+      setPanelView('chat');
       if (focus) onViewCase(focus);
       return;
     }
@@ -382,9 +405,9 @@ export function RunChatPanel({
     setFocusRequest(focus ? { caseId: focus, token: Date.now() } : null);
     startedSession.current = chatSession;
     setConversationId(id);
-    setDraft("");
+    setDraft('');
     setMessages([]);
-    setPanelView("chat");
+    setPanelView('chat');
     setBusy(true);
     void getConversation(backendOrigin, id)
       .then((data) => {
@@ -401,7 +424,7 @@ export function RunChatPanel({
               timestamp: Date.parse(message.createdAt) || Date.now(),
               suite,
               cdpStepsId:
-                suite || typeof legacyId !== "string" ? null : legacyId,
+                suite || typeof legacyId !== 'string' ? null : legacyId,
             };
           }),
         );
@@ -410,7 +433,9 @@ export function RunChatPanel({
       .catch((err: unknown) => {
         if (openRequestRef.current !== request) return;
         setHistoryError(
-          err instanceof Error ? err.message : "Could not open that conversation.",
+          err instanceof Error
+            ? err.message
+            : 'Could not open that conversation.',
         );
       })
       .finally(() => {
@@ -422,11 +447,12 @@ export function RunChatPanel({
     (testCase: SuiteCaseView, responseId: string, feature: string) => {
       const alreadyRunning = runs.some(
         (session) =>
-          session.status === "running" &&
+          session.status === 'running' &&
           session.conversationId === conversationId &&
           Boolean(session.caseId),
       );
-      if (!backendOrigin || runningCaseId || alreadyRunning || !conversationId) return;
+      if (!backendOrigin || runningCaseId || alreadyRunning || !conversationId)
+        return;
       onRunCase({
         conversationId,
         caseId: testCase.id,
@@ -441,23 +467,31 @@ export function RunChatPanel({
       }).catch((err: unknown) => {
         setRunningCaseId(null);
         onRunFailed();
-        const detail = err instanceof Error ? err.message : "Could not start the run.";
+        const detail =
+          err instanceof Error ? err.message : 'Could not start the run.';
         setMessages((prev) => [
           ...prev,
           {
-            id: createId("err"),
-            role: "system",
+            id: createId('err'),
+            role: 'system',
             text: detail,
             timestamp: Date.now(),
           },
         ]);
       });
     },
-    [backendOrigin, runningCaseId, conversationId, onRunCase, onRunFailed, runs],
+    [
+      backendOrigin,
+      runningCaseId,
+      conversationId,
+      onRunCase,
+      onRunFailed,
+      runs,
+    ],
   );
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -465,20 +499,20 @@ export function RunChatPanel({
 
   const liveCase = runs.find(
     (session) =>
-      session.status === "running" &&
+      session.status === 'running' &&
       session.conversationId === conversationId &&
       session.caseId,
   );
   const activeRunCaseId = liveCase?.caseId ?? runningCaseId;
 
   const connectionLabel =
-    status === "connected"
-      ? "Connected"
-      : status === "connecting"
-        ? "Connecting…"
-        : status === "error"
-          ? "Error"
-          : "Offline";
+    status === 'connected'
+      ? 'Connected'
+      : status === 'connecting'
+        ? 'Connecting…'
+        : status === 'error'
+          ? 'Error'
+          : 'Offline';
 
   return (
     <aside className="relative flex h-full min-h-0 w-[33%] min-w-0 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/85 pl-2.5 backdrop-blur-md">
@@ -494,10 +528,10 @@ export function RunChatPanel({
             <span
               className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
                 connected
-                  ? "bg-emerald-400"
-                  : status === "connecting"
-                    ? "bg-amber-400 animate-pulse"
-                    : "bg-slate-500"
+                  ? 'bg-emerald-400'
+                  : status === 'connecting'
+                    ? 'bg-amber-400 animate-pulse'
+                    : 'bg-slate-500'
               }`}
               aria-hidden
             />
@@ -518,21 +552,21 @@ export function RunChatPanel({
           <button
             type="button"
             onClick={() => {
-              setPanelView(panelView === "history" ? "chat" : "history");
+              setPanelView(panelView === 'history' ? 'chat' : 'history');
             }}
             className={`${tursorSecondaryIconButtonClassName} ${
-              panelView === "history"
-                ? "border-cyan-500/50 text-cyan-300"
-                : "text-slate-400"
+              panelView === 'history'
+                ? 'border-cyan-500/50 text-cyan-300'
+                : 'text-slate-400'
             }`}
             aria-label={
-              panelView === "history" ? "Back to chat" : "Conversation history"
+              panelView === 'history' ? 'Back to chat' : 'Conversation history'
             }
             title={
-              panelView === "history" ? "Back to chat" : "Conversation history"
+              panelView === 'history' ? 'Back to chat' : 'Conversation history'
             }
           >
-            {panelView === "history" ? (
+            {panelView === 'history' ? (
               <MessageSquare className="h-4 w-4" />
             ) : (
               <History className="h-4 w-4" />
@@ -541,7 +575,7 @@ export function RunChatPanel({
         </div>
       </div>
 
-      {panelView === "history" ? (
+      {panelView === 'history' ? (
         <ConversationHistoryList
           conversations={historyItems}
           currentConversationId={conversationId}
@@ -549,7 +583,7 @@ export function RunChatPanel({
           selectedRunId={selectedRunId}
           loading={historyLoading}
           error={historyError}
-          onBack={() => setPanelView("chat")}
+          onBack={() => setPanelView('chat')}
           onSelect={openConversation}
         />
       ) : (
@@ -563,7 +597,8 @@ export function RunChatPanel({
           >
             {messages.length === 0 && !busy ? (
               <p className="py-8 text-center text-xs text-slate-600">
-                Chat is for test instructions. Logs and runs appear on the right.
+                Chat is for test instructions. Logs and runs appear on the
+                right.
               </p>
             ) : (
               messages.map((msg) => (
@@ -591,7 +626,7 @@ export function RunChatPanel({
                 disabled={!connected}
                 reason={
                   !connected
-                    ? "Not connected to the backend. Open Settings to reconnect."
+                    ? 'Not connected to the backend. Open Settings to reconnect.'
                     : null
                 }
                 className="min-w-0 flex-1"
@@ -605,8 +640,8 @@ export function RunChatPanel({
                   onKeyDown={onKeyDown}
                   placeholder={
                     connected
-                      ? "Describe a test run…"
-                      : "Reconnect to send messages"
+                      ? 'Describe a test run…'
+                      : 'Reconnect to send messages'
                   }
                   disabled={!connected}
                   className="max-h-[7.8rem] min-h-[6.5rem] w-full flex-1 resize-none select-text overflow-y-auto rounded-lg bg-slate-950/60 px-2 py-2 text-sm text-slate-200 placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
@@ -617,16 +652,18 @@ export function RunChatPanel({
                   disabled={!connected || !draft.trim()}
                   reason={
                     !connected
-                      ? "Not connected to the backend."
+                      ? 'Not connected to the backend.'
                       : !draft.trim()
-                        ? "Enter a message to send."
+                        ? 'Enter a message to send.'
                         : null
                   }
                 >
                   <button
                     type="button"
                     onClick={sendMessage}
-                    disabled={!connected || !draft.trim() || busy || !conversationId}
+                    disabled={
+                      !connected || !draft.trim() || busy || !conversationId
+                    }
                     className={tursorPrimaryIconButtonClassName}
                     aria-label="Send message"
                   >
@@ -685,7 +722,7 @@ function ThinkingBubble() {
                 duration: 0.9,
                 repeat: Infinity,
                 delay: dot * 0.15,
-                ease: "easeInOut",
+                ease: 'easeInOut',
               }}
             />
           ))}
@@ -698,7 +735,7 @@ function ThinkingBubble() {
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -16, opacity: 0 }}
-              transition={{ duration: 0.35, ease: "easeInOut" }}
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
             >
               {phrase}
             </motion.span>
@@ -739,10 +776,13 @@ function SummaryModal({
             initial={{ y: 24, opacity: 0, scale: 0.98 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 24, opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 360 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 360 }}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 px-4 py-3">
-              <h2 id="chat-summary-title" className="text-lg font-semibold text-white">
+              <h2
+                id="chat-summary-title"
+                className="text-lg font-semibold text-white"
+              >
                 Summary
               </h2>
               <button
@@ -763,7 +803,7 @@ function SummaryModal({
 }
 
 function caseWasRun(
-  saved: ConversationSummary["cdp_runs"],
+  saved: ConversationSummary['cdp_runs'],
   sessions: RunSession[],
   conversationId: string | null,
   caseId: string,
@@ -773,7 +813,7 @@ function caseWasRun(
     (session) =>
       session.caseId === caseId &&
       session.conversationId === conversationId &&
-      session.status !== "running",
+      session.status !== 'running',
   );
 }
 
@@ -791,13 +831,17 @@ function CaseRunButton({
   feature: string;
   finished: boolean;
   runningCaseId: string | null;
-  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onRunTest: (
+    testCase: SuiteCaseView,
+    responseId: string,
+    feature: string,
+  ) => void;
   onViewCase: (caseId: string) => void;
 }) {
   const running = runningCaseId === testCase.id;
   const blocked = Boolean(runningCaseId);
   const viewClass =
-    "mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-xs font-semibold text-black shadow-[0_6px_20px_rgba(255,255,255,0.12)] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
+    'mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-xs font-semibold text-black shadow-[0_6px_20px_rgba(255,255,255,0.12)] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm';
   if (running) {
     return (
       <button type="button" disabled className={viewClass}>
@@ -846,11 +890,15 @@ function SuiteCaseBlock({
   testCase: SuiteCaseView;
   responseId: string;
   feature: string;
-  runs: ConversationSummary["cdp_runs"];
+  runs: ConversationSummary['cdp_runs'];
   sessions: RunSession[];
   conversationId: string | null;
   runningCaseId: string | null;
-  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onRunTest: (
+    testCase: SuiteCaseView,
+    responseId: string,
+    feature: string,
+  ) => void;
   onViewCase: (caseId: string) => void;
 }) {
   return (
@@ -873,7 +921,7 @@ function SuiteCaseBlock({
 }
 
 function suiteOverview(text: string, fallback: string): string {
-  const first = text.split(/\n\s*\n/)[0]?.trim() ?? "";
+  const first = text.split(/\n\s*\n/)[0]?.trim() ?? '';
   return first || fallback;
 }
 
@@ -891,16 +939,20 @@ function SuiteReply({
   suite: ChatSuite;
   overview: string;
   responseId: string;
-  runs: ConversationSummary["cdp_runs"];
+  runs: ConversationSummary['cdp_runs'];
   sessions: RunSession[];
   conversationId: string | null;
   runningCaseId: string | null;
-  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onRunTest: (
+    testCase: SuiteCaseView,
+    responseId: string,
+    feature: string,
+  ) => void;
   onViewCase: (caseId: string) => void;
 }) {
-  const success = suite.cases.filter((item) => item.kind === "success");
-  const failure = suite.cases.filter((item) => item.kind === "failure");
-  const edges = suite.cases.filter((item) => item.kind === "edge");
+  const success = suite.cases.filter((item) => item.kind === 'success');
+  const failure = suite.cases.filter((item) => item.kind === 'failure');
+  const edges = suite.cases.filter((item) => item.kind === 'edge');
   const shared = {
     responseId,
     feature: suite.feature,
@@ -911,7 +963,7 @@ function SuiteReply({
     onRunTest,
     onViewCase,
   };
-  const feature = suite.feature.trim() || "this feature";
+  const feature = suite.feature.trim() || 'this feature';
   const onlyCase = suite.cases.length === 1 ? suite.cases[0] : null;
   const fallback = onlyCase
     ? `For ${feature}, here is the ${onlyCase.title}.`
@@ -921,22 +973,26 @@ function SuiteReply({
     <div className="flex flex-col gap-3">
       <p className="whitespace-pre-wrap">{intro}</p>
       <ul className="list-disc space-y-3 pl-5 marker:text-slate-200">
-      {success.map((testCase) => (
-        <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
-      ))}
-      {failure.map((testCase) => (
-        <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
-      ))}
-      {edges.length > 0 ? (
-        <li>
-          <span className="font-semibold text-slate-50">Edge cases</span>
-          <ul className="mt-2 list-[circle] space-y-3 pl-5 marker:text-slate-300">
-            {edges.map((testCase) => (
-              <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
-            ))}
-          </ul>
-        </li>
-      ) : null}
+        {success.map((testCase) => (
+          <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
+        ))}
+        {failure.map((testCase) => (
+          <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
+        ))}
+        {edges.length > 0 ? (
+          <li>
+            <span className="font-semibold text-slate-50">Edge cases</span>
+            <ul className="mt-2 list-[circle] space-y-3 pl-5 marker:text-slate-300">
+              {edges.map((testCase) => (
+                <SuiteCaseBlock
+                  key={testCase.id}
+                  testCase={testCase}
+                  {...shared}
+                />
+              ))}
+            </ul>
+          </li>
+        ) : null}
       </ul>
     </div>
   );
@@ -952,15 +1008,19 @@ function ChatBubble({
   onViewCase,
 }: {
   message: ChatMessage;
-  runs: ConversationSummary["cdp_runs"];
+  runs: ConversationSummary['cdp_runs'];
   sessions: RunSession[];
   conversationId: string | null;
   runningCaseId: string | null;
-  onRunTest: (testCase: SuiteCaseView, responseId: string, feature: string) => void;
+  onRunTest: (
+    testCase: SuiteCaseView,
+    responseId: string,
+    feature: string,
+  ) => void;
   onViewCase: (caseId: string) => void;
 }) {
-  const isUser = message.role === "user";
-  const isSystem = message.role === "system";
+  const isUser = message.role === 'user';
+  const isSystem = message.role === 'system';
 
   if (isSystem) {
     return (
@@ -978,7 +1038,7 @@ function ChatBubble({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-2 ${isUser ? "ml-auto max-w-[83%] flex-row-reverse" : "mr-auto max-w-[92%]"}`}
+      className={`flex gap-2 ${isUser ? 'ml-auto max-w-[83%] flex-row-reverse' : 'mr-auto max-w-[92%]'}`}
     >
       {!isUser ? (
         <TursorLogo className="mt-0.5 h-5 w-5 shrink-0 object-contain" />
@@ -986,8 +1046,8 @@ function ChatBubble({
       <div
         className={`min-w-0 select-text break-words rounded-2xl px-3 py-2 text-sm ${
           isUser
-            ? "rounded-br-md bg-slate-800/90 text-slate-200 ring-1 ring-slate-700/60"
-            : "rounded-bl-md bg-gradient-to-br from-cyan-950/80 to-slate-900/90 text-slate-200 ring-1 ring-cyan-500/25"
+            ? 'rounded-br-md bg-slate-800/90 text-slate-200 ring-1 ring-slate-700/60'
+            : 'rounded-bl-md bg-gradient-to-br from-cyan-950/80 to-slate-900/90 text-slate-200 ring-1 ring-cyan-500/25'
         }`}
       >
         {isUser ? (
@@ -1011,19 +1071,24 @@ function ChatBubble({
           <CaseRunButton
             testCase={{
               id: message.cdpStepsId,
-              kind: "success",
-              title: "Test",
-              explanation: "",
+              kind: 'success',
+              title: 'Test',
+              explanation: '',
             }}
             responseId={message.id}
             feature=""
-            finished={caseWasRun(runs, sessions, conversationId, message.cdpStepsId)}
+            finished={caseWasRun(
+              runs,
+              sessions,
+              conversationId,
+              message.cdpStepsId,
+            )}
             runningCaseId={runningCaseId}
             onRunTest={onRunTest}
             onViewCase={onViewCase}
           />
         ) : null}
-        {message.status === "failed" ? (
+        {message.status === 'failed' ? (
           <p className="mt-1 text-[10px] text-red-400/90">Failed to send</p>
         ) : null}
       </div>

@@ -1,14 +1,14 @@
-import { useEffect, useRef } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useRef } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type {
   RunLogCategory,
   RunLogEntry,
   RunLogLevel,
-} from "../types/runLogs";
+} from '../types/runLogs';
 import {
   tursorSecondaryButtonClassName,
   tursorSecondaryIconButtonClassName,
-} from "./tursorButtonClasses";
+} from './tursorButtonClasses';
 
 type Props = {
   logs: RunLogEntry[];
@@ -18,40 +18,40 @@ type Props = {
 };
 
 const CATEGORY_LABEL: Record<RunLogCategory, string> = {
-  connection: "Connection",
-  context: "Context",
-  cdp: "CDP",
-  step: "Step",
-  screenshot: "Screenshot",
-  chat: "Chat",
-  system: "System",
-  error: "Error",
+  connection: 'Connection',
+  context: 'Context',
+  cdp: 'CDP',
+  step: 'Step',
+  screenshot: 'Screenshot',
+  chat: 'Chat',
+  system: 'System',
+  error: 'Error',
 };
 
 const CATEGORY_CLASS: Record<RunLogCategory, string> = {
-  connection: "border-sky-500/40 bg-sky-500/10 text-sky-300",
-  context: "border-violet-500/40 bg-violet-500/10 text-violet-300",
-  cdp: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
-  step: "border-blue-500/40 bg-blue-500/10 text-blue-300",
-  screenshot: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  chat: "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-300",
-  system: "border-slate-500/40 bg-slate-500/10 text-slate-300",
-  error: "border-red-500/40 bg-red-500/10 text-red-300",
+  connection: 'border-sky-500/40 bg-sky-500/10 text-sky-300',
+  context: 'border-violet-500/40 bg-violet-500/10 text-violet-300',
+  cdp: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
+  step: 'border-blue-500/40 bg-blue-500/10 text-blue-300',
+  screenshot: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+  chat: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-300',
+  system: 'border-slate-500/40 bg-slate-500/10 text-slate-300',
+  error: 'border-red-500/40 bg-red-500/10 text-red-300',
 };
 
 const LEVEL_CLASS: Record<RunLogLevel, string> = {
-  debug: "text-slate-500",
-  info: "text-slate-300",
-  warn: "text-amber-300",
-  error: "text-red-300",
-  success: "text-emerald-300",
+  debug: 'text-slate-500',
+  info: 'text-slate-300',
+  warn: 'text-amber-300',
+  error: 'text-red-300',
+  success: 'text-emerald-300',
 };
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: false,
   });
 }

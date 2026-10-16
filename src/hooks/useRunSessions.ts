@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import { getVsCodeApi } from "../vscodeApi";
+import { useCallback, useEffect, useState } from 'react';
+import { getVsCodeApi } from '../vscodeApi';
 import {
   createRunSessionId,
   type RunSession,
   type RunSessionStatus,
-} from "../types/runHistory";
+} from '../types/runHistory';
 
-const STORAGE_KEY = "tursorRunSessions";
+const STORAGE_KEY = 'tursorRunSessions';
 
 type StoredState = {
   sessions: RunSession[];
@@ -73,43 +73,47 @@ export function useRunSessions() {
     persistState({ sessions, currentSessionId });
   }, [sessions, currentSessionId]);
 
-  const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
+  const currentSession =
+    sessions.find((s) => s.id === currentSessionId) ?? null;
   const screenshots = currentSession?.screenshots ?? [];
 
-  const startNewSession = useCallback((
-    conversationId?: string | null,
-    caseMeta?: {
-      caseId?: string | null;
-      responseId?: string | null;
-      feature?: string | null;
-      caseTitle?: string | null;
+  const startNewSession = useCallback(
+    (
+      conversationId?: string | null,
+      caseMeta?: {
+        caseId?: string | null;
+        responseId?: string | null;
+        feature?: string | null;
+        caseTitle?: string | null;
+      },
+    ) => {
+      const id = createRunSessionId();
+      const session: RunSession = {
+        id,
+        startedAt: Date.now(),
+        screenshots: [],
+        status: 'running',
+        conversationId: conversationId ?? null,
+        caseId: caseMeta?.caseId ?? null,
+        responseId: caseMeta?.responseId ?? null,
+        feature: caseMeta?.feature ?? null,
+        caseTitle: caseMeta?.caseTitle ?? null,
+      };
+      setSessions((prev) => {
+        const closed = prev.map((s) =>
+          s.status === 'running' ? { ...s, status: 'fail' as const } : s,
+        );
+        return [session, ...closed];
+      });
+      setCurrentSessionId(id);
+      return id;
     },
-  ) => {
-    const id = createRunSessionId();
-    const session: RunSession = {
-      id,
-      startedAt: Date.now(),
-      screenshots: [],
-      status: "running",
-      conversationId: conversationId ?? null,
-      caseId: caseMeta?.caseId ?? null,
-      responseId: caseMeta?.responseId ?? null,
-      feature: caseMeta?.feature ?? null,
-      caseTitle: caseMeta?.caseTitle ?? null,
-    };
-    setSessions((prev) => {
-      const closed = prev.map((s) =>
-        s.status === "running" ? { ...s, status: "fail" as const } : s,
-      );
-      return [session, ...closed];
-    });
-    setCurrentSessionId(id);
-    return id;
-  }, []);
+    [],
+  );
 
   const appendScreenshot = useCallback((url: string) => {
     setSessions((prev) => {
-      const idx = prev.findIndex((s) => s.status === "running");
+      const idx = prev.findIndex((s) => s.status === 'running');
       if (idx === -1) return prev;
       const next = [...prev];
       const session = next[idx]!;
@@ -121,36 +125,39 @@ export function useRunSessions() {
     });
   }, []);
 
-  const attachRun = useCallback((runId: string, conversationId: string | null) => {
-    setSessions((prev) => {
-      const idx = prev.findIndex((s) => s.status === "running");
-      if (idx === -1) {
-        return [
-          {
-            id: runId,
-            startedAt: Date.now(),
-            screenshots: [],
-            status: "running" as const,
-            conversationId,
-          },
-          ...prev,
-        ];
-      }
-      const next = [...prev];
-      const session = next[idx]!;
-      next[idx] = {
-        ...session,
-        id: runId,
-        conversationId: conversationId ?? session.conversationId ?? null,
-      };
-      return next;
-    });
-    setCurrentSessionId(runId);
-  }, []);
+  const attachRun = useCallback(
+    (runId: string, conversationId: string | null) => {
+      setSessions((prev) => {
+        const idx = prev.findIndex((s) => s.status === 'running');
+        if (idx === -1) {
+          return [
+            {
+              id: runId,
+              startedAt: Date.now(),
+              screenshots: [],
+              status: 'running' as const,
+              conversationId,
+            },
+            ...prev,
+          ];
+        }
+        const next = [...prev];
+        const session = next[idx]!;
+        next[idx] = {
+          ...session,
+          id: runId,
+          conversationId: conversationId ?? session.conversationId ?? null,
+        };
+        return next;
+      });
+      setCurrentSessionId(runId);
+    },
+    [],
+  );
 
   const completeCurrentSession = useCallback((status: RunSessionStatus) => {
     setSessions((prev) =>
-      prev.map((s) => (s.status === "running" ? { ...s, status } : s)),
+      prev.map((s) => (s.status === 'running' ? { ...s, status } : s)),
     );
   }, []);
 

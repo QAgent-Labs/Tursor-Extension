@@ -1,5 +1,5 @@
-import type { InlineNode } from "../format/parseAiMarkup";
-import { parseAiMarkup } from "../format/parseAiMarkup";
+import type { InlineNode } from '../format/parseAiMarkup';
+import { parseAiMarkup } from '../format/parseAiMarkup';
 
 type Props = {
   text: string;
@@ -10,16 +10,17 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
     <>
       {nodes.map((node, index) => {
-        if (node.kind === "text") {
+        if (node.kind === 'text') {
           return <span key={index}>{node.text}</span>;
         }
         const className =
-          node.kind === "bold"
-            ? "font-semibold text-slate-50"
-            : node.kind === "italic"
-              ? "italic"
-              : "underline decoration-slate-300/80 underline-offset-2";
-        const Tag = node.kind === "bold" ? "strong" : node.kind === "italic" ? "em" : "u";
+          node.kind === 'bold'
+            ? 'font-semibold text-slate-50'
+            : node.kind === 'italic'
+              ? 'italic'
+              : 'underline decoration-slate-300/80 underline-offset-2';
+        const Tag =
+          node.kind === 'bold' ? 'strong' : node.kind === 'italic' ? 'em' : 'u';
         return (
           <Tag key={index} className={className}>
             <Inline nodes={node.children} />
@@ -34,9 +35,9 @@ export function FormattedAiText({ text, className }: Props) {
   const blocks = parseAiMarkup(text);
 
   return (
-    <div className={`flex flex-col gap-2 ${className ?? ""}`.trim()}>
+    <div className={`flex flex-col gap-2 ${className ?? ''}`.trim()}>
       {blocks.map((block, index) => {
-        if (block.kind === "paragraph") {
+        if (block.kind === 'paragraph') {
           return (
             <p key={index}>
               {block.lines.map((line, lineIndex) => (
@@ -54,7 +55,7 @@ export function FormattedAiText({ text, className }: Props) {
             {block.items.map((item, itemIndex) => (
               <li
                 key={itemIndex}
-                className={item.text.length === 0 ? "list-none" : undefined}
+                className={item.text.length === 0 ? 'list-none' : undefined}
               >
                 {item.text.length > 0 ? <Inline nodes={item.text} /> : null}
                 {item.children.length > 0 ? (

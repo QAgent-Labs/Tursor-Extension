@@ -1,14 +1,14 @@
 export type RunLogCategory =
-  | "connection"
-  | "context"
-  | "cdp"
-  | "step"
-  | "screenshot"
-  | "chat"
-  | "system"
-  | "error";
+  | 'connection'
+  | 'context'
+  | 'cdp'
+  | 'step'
+  | 'screenshot'
+  | 'chat'
+  | 'system'
+  | 'error';
 
-export type RunLogLevel = "debug" | "info" | "warn" | "error" | "success";
+export type RunLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'success';
 
 export type RunLogEntry = {
   id: string;
@@ -21,26 +21,26 @@ export type RunLogEntry = {
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null;
+  return typeof v === 'object' && v !== null;
 }
 
 const LOG_CATEGORIES = new Set<RunLogCategory>([
-  "connection",
-  "context",
-  "cdp",
-  "step",
-  "screenshot",
-  "chat",
-  "system",
-  "error",
+  'connection',
+  'context',
+  'cdp',
+  'step',
+  'screenshot',
+  'chat',
+  'system',
+  'error',
 ]);
 
 const LOG_LEVELS = new Set<RunLogLevel>([
-  "debug",
-  "info",
-  "warn",
-  "error",
-  "success",
+  'debug',
+  'info',
+  'warn',
+  'error',
+  'success',
 ]);
 
 let logIdCounter = 0;
@@ -51,7 +51,7 @@ function nextLogId(): string {
 }
 
 function parseTimestamp(raw: unknown): number {
-  if (typeof raw === "string") {
+  if (typeof raw === 'string') {
     const ms = Date.parse(raw);
     if (Number.isFinite(ms)) return ms;
   }
@@ -59,23 +59,24 @@ function parseTimestamp(raw: unknown): number {
 }
 
 export function parseRunLogEvent(data: unknown): RunLogEntry | null {
-  if (!isRecord(data) || data.type !== "log") return null;
-  if (typeof data.message !== "string") return null;
+  if (!isRecord(data) || data.type !== 'log') return null;
+  if (typeof data.message !== 'string') return null;
 
   const categoryRaw = data.category;
   const category =
-    typeof categoryRaw === "string" && LOG_CATEGORIES.has(categoryRaw as RunLogCategory)
+    typeof categoryRaw === 'string' &&
+    LOG_CATEGORIES.has(categoryRaw as RunLogCategory)
       ? (categoryRaw as RunLogCategory)
-      : "system";
+      : 'system';
 
   const levelRaw = data.level;
   const level =
-    typeof levelRaw === "string" && LOG_LEVELS.has(levelRaw as RunLogLevel)
+    typeof levelRaw === 'string' && LOG_LEVELS.has(levelRaw as RunLogLevel)
       ? (levelRaw as RunLogLevel)
-      : "info";
+      : 'info';
 
   const stepId =
-    typeof data.stepId === "string" && data.stepId.trim()
+    typeof data.stepId === 'string' && data.stepId.trim()
       ? data.stepId
       : undefined;
 

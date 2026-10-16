@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { getVsCodeApi } from "../vscodeApi";
+import { useCallback, useEffect, useState } from 'react';
+import { getVsCodeApi } from '../vscodeApi';
 
-const STORAGE_KEY = "tursorRunScreenshotUrls";
+const STORAGE_KEY = 'tursorRunScreenshotUrls';
 
 function loadStoredUrls(): string[] {
   const vscode = getVsCodeApi();
@@ -11,7 +11,7 @@ function loadStoredUrls(): string[] {
     } | null;
     const urls = saved?.[STORAGE_KEY];
     if (Array.isArray(urls)) {
-      return urls.filter((u): u is string => typeof u === "string");
+      return urls.filter((u): u is string => typeof u === 'string');
     }
   }
   try {
@@ -19,7 +19,7 @@ function loadStoredUrls(): string[] {
     if (raw) {
       const parsed = JSON.parse(raw) as unknown;
       if (Array.isArray(parsed)) {
-        return parsed.filter((u): u is string => typeof u === "string");
+        return parsed.filter((u): u is string => typeof u === 'string');
       }
     }
   } catch {

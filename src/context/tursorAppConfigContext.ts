@@ -1,5 +1,5 @@
-import { createContext } from "react";
-import type { TursorAppConfig, TursorBackendStatus } from "../types/appConfig";
+import { createContext } from 'react';
+import type { TursorAppConfig, TursorBackendStatus } from '../types/appConfig';
 
 export type TursorAppConfigContextValue = {
   config: TursorAppConfig;

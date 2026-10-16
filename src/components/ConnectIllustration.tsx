@@ -1,5 +1,5 @@
-import { motion } from "motion/react";
-import { Laptop, Server, Wifi } from "lucide-react";
+import { motion } from 'motion/react';
+import { Laptop, Server, Wifi } from 'lucide-react';
 
 type Props = {
   waitingForSocket: boolean;
@@ -13,7 +13,7 @@ type EndpointCardProps = {
   titleClass: string;
   iconClass: string;
   iconSizeClass?: string;
-  slideFrom: "left" | "right";
+  slideFrom: 'left' | 'right';
 };
 
 function EndpointCard({
@@ -22,12 +22,12 @@ function EndpointCard({
   subtitle,
   titleClass,
   iconClass,
-  iconSizeClass = "h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8",
+  iconSizeClass = 'h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8',
   slideFrom,
 }: EndpointCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: slideFrom === "left" ? -16 : 16 }}
+      initial={{ opacity: 0, x: slideFrom === 'left' ? -16 : 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4 }}
       className="flex w-full min-w-0 flex-row items-center justify-center gap-3 rounded-xl border border-slate-700/60 bg-[#171F34]/80 px-3 py-2.5 text-center backdrop-blur-xl sm:rounded-2xl sm:px-4 sm:py-3 md:max-w-[11rem] lg:max-w-[12.5rem]"
@@ -52,11 +52,11 @@ function PulseLine({
   trackClass,
   waitingForSocket,
 }: {
-  color: "sky" | "fuchsia";
+  color: 'sky' | 'fuchsia';
   trackClass: string;
   waitingForSocket: boolean;
 }) {
-  const barClass = color === "sky" ? "bg-sky-400" : "bg-fuchsia-500";
+  const barClass = color === 'sky' ? 'bg-sky-400' : 'bg-fuchsia-500';
 
   return (
     <div
@@ -64,8 +64,8 @@ function PulseLine({
     >
       {waitingForSocket ? (
         <motion.div
-          animate={{ x: ["-100%", "250%"] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
+          animate={{ x: ['-100%', '250%'] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
           className={`absolute inset-y-0 w-6 rounded-full sm:w-8 ${barClass}`}
         />
       ) : (
@@ -152,8 +152,8 @@ function ConnectionLineRow({
         <div
           className={`rounded-lg border p-2 shadow-[0_0_24px_rgba(59,130,246,.22)] sm:rounded-xl sm:p-2.5 ${
             backendFailed
-              ? "border-red-500/40 bg-red-950/40"
-              : "border-blue-500/40 bg-[#1A2B55]"
+              ? 'border-red-500/40 bg-red-950/40'
+              : 'border-blue-500/40 bg-[#1A2B55]'
           }`}
         >
           <Wifi className={wifiClass} />
@@ -180,8 +180,8 @@ export function ConnectIllustration({
   backendFailed,
 }: Props) {
   const wifiClass = backendFailed
-    ? "h-5 w-5 text-red-400 sm:h-6 sm:w-6"
-    : "h-5 w-5 text-cyan-400 sm:h-6 sm:w-6";
+    ? 'h-5 w-5 text-red-400 sm:h-6 sm:w-6'
+    : 'h-5 w-5 text-cyan-400 sm:h-6 sm:w-6';
 
   return (
     <div className="mb-5 w-full min-w-0 overflow-hidden sm:mb-6">
@@ -205,7 +205,9 @@ export function ConnectIllustration({
           <p className="text-[9px] font-medium leading-tight text-slate-300 sm:text-[10px]">
             Secure WebSocket
           </p>
-          <p className="text-[8px] text-slate-500 sm:text-[9px]">Live Connection</p>
+          <p className="text-[8px] text-slate-500 sm:text-[9px]">
+            Live Connection
+          </p>
         </div>
         <EndpointCard
           icon={Server}

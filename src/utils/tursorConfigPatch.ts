@@ -1,4 +1,4 @@
-import type { TursorAppConfig } from "../types/appConfig";
+import type { TursorAppConfig } from '../types/appConfig';
 
 function parsePortField(raw: string): number | null {
   const n = Number.parseInt(raw, 10);

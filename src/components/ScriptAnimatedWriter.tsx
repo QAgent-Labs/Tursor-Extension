@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { motion } from "motion/react";
-import { Terminal } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import { Terminal } from 'lucide-react';
 
 type Part = {
   text: string;
@@ -15,89 +15,89 @@ type Line = {
 };
 
 /** Shared line height for gutter numbers and code so rows stay aligned. */
-const LINE_CLASS = "h-[1.5em] leading-[1.75]";
+const LINE_CLASS = 'h-[1.5em] leading-[1.75]';
 
 const scriptLines: Line[] = [
-  { text: "#!/bin/bash", color: "text-gray-400" },
-  { text: "" },
-  { text: "set -e", color: "text-purple-400" },
-  { text: "" },
-  { text: 'DIR="$HOME/.tursor"', color: "text-yellow-300" },
-  { text: "" },
-  { text: "" },
-  { text: "# Clone or update repo", color: "text-gray-500" },
-  { text: 'if [ -d "$DIR" ]; then', color: "text-purple-400" },
+  { text: '#!/bin/bash', color: 'text-gray-400' },
+  { text: '' },
+  { text: 'set -e', color: 'text-purple-400' },
+  { text: '' },
+  { text: 'DIR="$HOME/.tursor"', color: 'text-yellow-300' },
+  { text: '' },
+  { text: '' },
+  { text: '# Clone or update repo', color: 'text-gray-500' },
+  { text: 'if [ -d "$DIR" ]; then', color: 'text-purple-400' },
   {
     text: 'cd "$DIR" && git pull',
     indent: 2,
     parts: [
-      { text: "cd", color: "text-orange-400" },
-      { text: ' "$DIR" && ', color: "text-white" },
-      { text: "git", color: "text-green-400" },
-      { text: " pull", color: "text-white" },
+      { text: 'cd', color: 'text-orange-400' },
+      { text: ' "$DIR" && ', color: 'text-white' },
+      { text: 'git', color: 'text-green-400' },
+      { text: ' pull', color: 'text-white' },
     ],
   },
-  { text: "else", color: "text-purple-400" },
+  { text: 'else', color: 'text-purple-400' },
   {
     text: 'git clone https://github.com/QAgent-Labs/Tursor-Backend.git "$DIR"',
     indent: 2,
     parts: [
-      { text: "git", color: "text-green-400" },
-      { text: " clone ", color: "text-white" },
+      { text: 'git', color: 'text-green-400' },
+      { text: ' clone ', color: 'text-white' },
       {
-        text: "https://github.com/QAgent-Labs/Tursor-Backend.git",
-        color: "text-blue-400",
+        text: 'https://github.com/QAgent-Labs/Tursor-Backend.git',
+        color: 'text-blue-400',
       },
-      { text: ' "$DIR"', color: "text-yellow-300" },
+      { text: ' "$DIR"', color: 'text-yellow-300' },
     ],
   },
   {
     text: 'cd "$DIR"',
     indent: 2,
     parts: [
-      { text: "cd", color: "text-orange-400" },
-      { text: ' "$DIR"', color: "text-yellow-300" },
+      { text: 'cd', color: 'text-orange-400' },
+      { text: ' "$DIR"', color: 'text-yellow-300' },
     ],
   },
-  { text: "fi", color: "text-purple-400" },
-  { text: "" },
-  { text: "" },
-  { text: "# Install dependencies", color: "text-gray-500" },
+  { text: 'fi', color: 'text-purple-400' },
+  { text: '' },
+  { text: '' },
+  { text: '# Install dependencies', color: 'text-gray-500' },
   {
-    text: "npm install",
+    text: 'npm install',
     parts: [
-      { text: "npm", color: "text-orange-400" },
-      { text: " install", color: "text-white" },
+      { text: 'npm', color: 'text-orange-400' },
+      { text: ' install', color: 'text-white' },
     ],
   },
-  { text: "" },
-  { text: "# Build project", color: "text-gray-500" },
+  { text: '' },
+  { text: '# Build project', color: 'text-gray-500' },
   {
-    text: "npm run build",
+    text: 'npm run build',
     parts: [
-      { text: "npm", color: "text-orange-400" },
-      { text: " run ", color: "text-white" },
-      { text: "build", color: "text-green-400" },
+      { text: 'npm', color: 'text-orange-400' },
+      { text: ' run ', color: 'text-white' },
+      { text: 'build', color: 'text-green-400' },
     ],
   },
-  { text: "" },
-  { text: "# Register CLI globally", color: "text-gray-500" },
+  { text: '' },
+  { text: '# Register CLI globally', color: 'text-gray-500' },
   {
-    text: "npm install -g .",
+    text: 'npm install -g .',
     parts: [
-      { text: "npm", color: "text-orange-400" },
-      { text: " install -g ", color: "text-white" },
-      { text: ".", color: "text-yellow-300" },
+      { text: 'npm', color: 'text-orange-400' },
+      { text: ' install -g ', color: 'text-white' },
+      { text: '.', color: 'text-yellow-300' },
     ],
   },
-  { text: "" },
-  { text: "" },
-  { text: "# Start Tursor", color: "text-gray-500" },
+  { text: '' },
+  { text: '' },
+  { text: '# Start Tursor', color: 'text-gray-500' },
   {
-    text: "tursor start",
+    text: 'tursor start',
     parts: [
-      { text: "tursor", color: "text-green-400" },
-      { text: " start", color: "text-white" },
+      { text: 'tursor', color: 'text-green-400' },
+      { text: ' start', color: 'text-white' },
     ],
   },
 ];
@@ -117,15 +117,15 @@ export default function ScriptAnimatedViewer() {
   }, []);
 
   const renderLine = (line: Line, index: number) => {
-    const indentSpaces = line.indent ? " ".repeat(line.indent) : "";
+    const indentSpaces = line.indent ? ' '.repeat(line.indent) : '';
 
-    if (line.text === "" && !line.parts) {
+    if (line.text === '' && !line.parts) {
       return (
         <div
           key={index}
           className={`${LINE_CLASS} whitespace-pre-wrap break-words`}
         >
-          {"\u00A0"}
+          {'\u00A0'}
         </div>
       );
     }
@@ -134,7 +134,7 @@ export default function ScriptAnimatedViewer() {
       return (
         <div
           key={index}
-          className={`${LINE_CLASS} whitespace-pre-wrap break-words ${line.color || "text-slate-200"}`}
+          className={`${LINE_CLASS} whitespace-pre-wrap break-words ${line.color || 'text-slate-200'}`}
         >
           {indentSpaces + line.text}
         </div>
@@ -181,7 +181,7 @@ export default function ScriptAnimatedViewer() {
             {scriptLines.map((_, index) => (
               <div
                 key={index}
-                className={`${LINE_CLASS} ${index < visibleLines ? "opacity-100" : "opacity-0"}`}
+                className={`${LINE_CLASS} ${index < visibleLines ? 'opacity-100' : 'opacity-0'}`}
                 style={{ minWidth: `${lineNumWidth + 0.5}ch` }}
               >
                 {index + 1}

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement } from 'react';
 
 type Props = {
   disabled: boolean;
@@ -21,7 +21,7 @@ export function DisabledReasonTooltip({
 
   return (
     <span
-      className={`group/disabled-tip relative inline-flex ${className ?? ""}`}
+      className={`group/disabled-tip relative inline-flex ${className ?? ''}`}
     >
       {children}
       {showTip ? (

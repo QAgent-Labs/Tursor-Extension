@@ -1,4 +1,4 @@
-import { ensureHostSocketBridgeTap } from "./vscodeHostSocketBridge";
+import { ensureHostSocketBridgeTap } from './vscodeHostSocketBridge';
 
 /**
  * VS Code / Cursor injects `acquireVsCodeApi` into the webview once.
@@ -24,7 +24,7 @@ export function getVsCodeApi(): VsCodeApi | null {
     return cached;
   }
   const g = globalThis as GlobalWithVsCode;
-  if (typeof g.acquireVsCodeApi === "function") {
+  if (typeof g.acquireVsCodeApi === 'function') {
     try {
       cached = g.acquireVsCodeApi();
     } catch {

@@ -1,5 +1,5 @@
-import { motion } from "motion/react";
-import { useState } from "react";
+import { motion } from 'motion/react';
+import { useState } from 'react';
 
 type Particle = { id: number; x: number; y: number; duration: number };
 
@@ -27,7 +27,7 @@ export function AnimatedBackground() {
             linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
             linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
           `,
-            backgroundSize: "80px 80px",
+            backgroundSize: '80px 80px',
           }}
         />
       </div>
@@ -49,7 +49,7 @@ export function AnimatedBackground() {
           transition={{
             duration: particle.duration,
             repeat: Infinity,
-            ease: "easeInOut",
+            ease: 'easeInOut',
           }}
         />
       ))}
@@ -65,7 +65,7 @@ export function AnimatedBackground() {
         transition={{
           duration: 20,
           repeat: Infinity,
-          ease: "easeInOut",
+          ease: 'easeInOut',
         }}
       />
       <motion.div
@@ -78,7 +78,7 @@ export function AnimatedBackground() {
         transition={{
           duration: 25,
           repeat: Infinity,
-          ease: "easeInOut",
+          ease: 'easeInOut',
         }}
       />
     </div>

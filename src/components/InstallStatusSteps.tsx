@@ -1,13 +1,13 @@
-import { motion } from "motion/react";
-import { Fragment, useCallback, useMemo, useRef } from "react";
-import { Check, Loader2, Minus, X } from "lucide-react";
+import { motion } from 'motion/react';
+import { Fragment, useCallback, useMemo, useRef } from 'react';
+import { Check, Loader2, Minus, X } from 'lucide-react';
 import {
   getVisiblePhasesForStack,
   isTerminalStepState,
   type InstallPhase,
   type StepVisualState,
-} from "../types/installStatus";
-import { installStepLabel } from "../utils/installStepLabels";
+} from '../types/installStatus';
+import { installStepLabel } from '../utils/installStepLabels';
 
 function stepLabel(phase: InstallPhase, status: StepVisualState): string {
   return installStepLabel(phase, status);
@@ -17,24 +17,24 @@ const DASH_STAGGER_SEC = 0.14;
 const DASH_DURATION_SEC = 0.22;
 
 function StepIcon({ status }: { status: StepVisualState }) {
-  if (status === "running") {
+  if (status === 'running') {
     return <Loader2 className="h-5 w-5 shrink-0 animate-spin text-cyan-400" />;
   }
-  if (status === "success") {
+  if (status === 'success') {
     return (
       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 ring-1 ring-emerald-500/40">
         <Check className="h-4 w-4 text-emerald-400" strokeWidth={2.5} />
       </div>
     );
   }
-  if (status === "failure") {
+  if (status === 'failure') {
     return (
       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-500/20 ring-1 ring-rose-500/40">
         <X className="h-4 w-4 text-rose-400" strokeWidth={2.5} />
       </div>
     );
   }
-  if (status === "skipped") {
+  if (status === 'skipped') {
     return (
       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-600/30 ring-1 ring-slate-500/40">
         <Minus className="h-4 w-4 text-slate-400" strokeWidth={2.5} />
@@ -47,13 +47,13 @@ function StepIcon({ status }: { status: StepVisualState }) {
 }
 
 function stepLabelClass(status: StepVisualState) {
-  if (status === "pending") return "text-slate-500";
-  if (status === "skipped") return "text-slate-400";
-  return "text-slate-200";
+  if (status === 'pending') return 'text-slate-500';
+  if (status === 'skipped') return 'text-slate-400';
+  return 'text-slate-200';
 }
 
 const DASH_BAR_CLASS =
-  "h-1 w-0.75 items-left rounded-full bg-gradient-to-r from-slate-500/40 via-cyan-400/60 to-slate-500/40";
+  'h-1 w-0.75 items-left rounded-full bg-gradient-to-r from-slate-500/40 via-cyan-400/60 to-slate-500/40';
 
 /** Stays visible between two step cards after the animated handoff completes. */
 function PersistentDashLine() {
@@ -114,8 +114,8 @@ function StepRow({
       role="listitem"
       className={
         isActiveRow
-          ? "flex items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-900/50 px-3 py-2.5 ring-1 ring-cyan-500/10"
-          : "flex items-center gap-3 rounded-xl border border-slate-700/30 bg-slate-900/25 px-3 py-2 opacity-85"
+          ? 'flex items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-900/50 px-3 py-2.5 ring-1 ring-cyan-500/10'
+          : 'flex items-center gap-3 rounded-xl border border-slate-700/30 bg-slate-900/25 px-3 py-2 opacity-85'
       }
     >
       <StepIcon status={status} />
@@ -160,7 +160,7 @@ export function InstallStatusSteps({
     /* Step reveal is driven by useEffect when a phase reaches a terminal state. */
   }, []);
 
-  const connectorInstanceKey = `${safeRevealed}-${target[safeRevealed] ?? ""}`;
+  const connectorInstanceKey = `${safeRevealed}-${target[safeRevealed] ?? ''}`;
 
   return (
     <div className="mt-6 flex min-h-[3rem] flex-col gap-0" role="list">

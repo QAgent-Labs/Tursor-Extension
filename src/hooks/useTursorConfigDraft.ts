@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import type { TursorAppConfig } from "../types/appConfig";
+import { useCallback, useState } from 'react';
+import type { TursorAppConfig } from '../types/appConfig';
 
 type DraftOverride = {
   workspacePath?: string | null;
@@ -15,9 +15,9 @@ export function useTursorConfigDraft(
   const [override, setOverride] = useState<DraftOverride | null>(null);
 
   const backendPortFromConfig =
-    config.backendPort != null ? String(config.backendPort) : "";
+    config.backendPort != null ? String(config.backendPort) : '';
   const frontendPortFromConfig =
-    config.frontendPort != null ? String(config.frontendPort) : "";
+    config.frontendPort != null ? String(config.frontendPort) : '';
 
   const workspacePath = override?.workspacePath ?? resolvedWorkspacePath;
   const backendPort = override?.backendPort ?? backendPortFromConfig;
