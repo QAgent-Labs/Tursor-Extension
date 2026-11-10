@@ -1,4 +1,5 @@
-export type RunSessionStatus = 'running' | 'success' | 'fail';
+/** queued: waiting its turn in a group run. */
+export type RunSessionStatus = 'queued' | 'running' | 'success' | 'fail';
 
 export type RunSession = {
   id: string;
@@ -10,6 +11,7 @@ export type RunSession = {
   responseId?: string | null;
   feature?: string | null;
   caseTitle?: string | null;
+  suiteId?: string | null;
 };
 
 export function createRunSessionId(): string {

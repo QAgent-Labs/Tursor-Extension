@@ -12,6 +12,7 @@ export type CdpRunRecord = {
   feature: string;
   title: string;
   kind: SuiteCaseKind | '';
+  suite_id: string;
 };
 
 export type SummaryPlan = {
@@ -20,6 +21,8 @@ export type SummaryPlan = {
   response_id: string;
   feature: string;
   kind: SuiteCaseKind | '';
+  suite_id: string;
+  version: number;
 };
 
 export type ConversationSummary = {
@@ -34,11 +37,39 @@ export type SuiteCaseView = {
   kind: SuiteCaseKind;
   title: string;
   explanation: string;
+  requirementIds?: string[];
 };
 
 export type ChatSuite = {
   feature: string;
+  /** Empty for suites saved before versioning. */
+  suiteId: string;
+  version: number;
+  moduleKey: string;
+  moduleName: string;
+  reused: boolean;
   cases: SuiteCaseView[];
+};
+
+export type ReportFormat = 'md' | 'pdf';
+
+export type GeneratedReport = {
+  reportId: string;
+  suiteId: string;
+  format: ReportFormat;
+  filename: string;
+  contentType: string;
+  encoding: 'utf-8' | 'base64';
+  content: string;
+  url: string;
+  metrics: {
+    total: number;
+    executed: number;
+    passed: number;
+    failed: number;
+    not_run: number;
+    runs: number;
+  };
 };
 
 export type ChatTurn = {
@@ -82,9 +113,21 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+/** Reads a suite from message metadata (snake_case) or a chat turn (camelCase). */
 export function suiteFromMetadata(metadata: unknown): ChatSuite | null {
   if (!metadata || typeof metadata !== 'object') return null;
-  const data = metadata as { feature?: unknown; cases?: unknown };
+  const data = metadata as {
+    feature?: unknown;
+    cases?: unknown;
+    suite_id?: unknown;
+    suiteId?: unknown;
+    version?: unknown;
+    module_key?: unknown;
+    moduleKey?: unknown;
+    module_name?: unknown;
+    moduleName?: unknown;
+    reused?: unknown;
+  };
   if (!Array.isArray(data.cases)) return null;
   const cases: SuiteCaseView[] = [];
   for (const item of data.cases) {
@@ -94,6 +137,7 @@ export function suiteFromMetadata(metadata: unknown): ChatSuite | null {
       kind?: unknown;
       title?: unknown;
       explanation?: unknown;
+      requirementIds?: unknown;
     };
     const kind = asKind(row.kind);
     if (!kind || typeof row.id !== 'string' || !row.id) continue;
@@ -102,10 +146,21 @@ export function suiteFromMetadata(metadata: unknown): ChatSuite | null {
       kind,
       title: asText(row.title) || 'Test case',
       explanation: asText(row.explanation),
+      requirementIds: Array.isArray(row.requirementIds)
+        ? row.requirementIds.filter((id): id is string => typeof id === 'string')
+        : [],
     });
   }
   if (cases.length === 0) return null;
-  return { feature: asText(data.feature), cases };
+  return {
+    feature: asText(data.feature),
+    suiteId: asText(data.suiteId) || asText(data.suite_id),
+    version: typeof data.version === 'number' ? data.version : 0,
+    moduleKey: asText(data.moduleKey) || asText(data.module_key),
+    moduleName: asText(data.moduleName) || asText(data.module_name),
+    reused: data.reused === true,
+    cases,
+  };
 }
 
 function asSummary(raw: unknown): ConversationSummary {
@@ -126,6 +181,8 @@ function asSummary(raw: unknown): ConversationSummary {
         response_id?: unknown;
         feature?: unknown;
         kind?: unknown;
+        suite_id?: unknown;
+        version?: unknown;
       };
       if (typeof plan.id !== 'string' || !plan.id) continue;
       plans.push({
@@ -134,6 +191,8 @@ function asSummary(raw: unknown): ConversationSummary {
         response_id: asText(plan.response_id),
         feature: asText(plan.feature),
         kind: asKind(plan.kind),
+        suite_id: asText(plan.suite_id),
+        version: typeof plan.version === 'number' ? plan.version : 0,
       });
     }
   }
@@ -151,6 +210,7 @@ function asSummary(raw: unknown): ConversationSummary {
         feature?: unknown;
         title?: unknown;
         kind?: unknown;
+        suite_id?: unknown;
       };
       if (typeof run.cdp_step_id !== 'string' || !run.cdp_step_id) continue;
       if (run.status !== 'passed' && run.status !== 'failure') continue;
@@ -171,6 +231,7 @@ function asSummary(raw: unknown): ConversationSummary {
         feature: asText(run.feature),
         title: asText(run.title),
         kind: asKind(run.kind),
+        suite_id: asText(run.suite_id),
       });
     }
   }
@@ -250,11 +311,23 @@ export function sendConversationMessage(
   return postJson<ChatTurn>(origin, '/chat/message', input).then(asChatTurn);
 }
 
-export function runCdpPlan(
+/** Run one case, a chosen group (caseIds), or every case of a suite (suiteId). */
+export function runCases(
   origin: string,
-  input: { cdpStepsId: string; conversationId: string },
-): Promise<{ ok: true; cdpStepsId: string }> {
+  input: { conversationId: string; caseIds?: string[]; suiteId?: string },
+): Promise<{ ok: true; caseIds: string[]; suiteId: string | null }> {
   return postJson(origin, '/chat/run', input);
+}
+
+export function generateReport(
+  origin: string,
+  input: {
+    suiteId: string;
+    conversationId: string | null;
+    format: ReportFormat;
+  },
+): Promise<GeneratedReport> {
+  return postJson(origin, '/reports', input);
 }
 
 export function listConversations(

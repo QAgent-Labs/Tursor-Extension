@@ -1,14 +1,15 @@
-import { useState } from 'react';
-import { RefreshCw, Loader2 } from 'lucide-react';
-import { RunsGallery, type RunsPreview } from './RunsGallery';
-import { RunLogsPanel } from './RunLogsPanel';
-import { TursorPathText } from './TursorPathText';
-import { tursorSecondaryButtonClassName } from './tursorButtonClasses';
-import type { SuiteGroup } from '../runs/suiteGroups';
-import type { ContextPanelPhase } from '../types/runChat';
-import type { RunLogEntry } from '../types/runLogs';
+import { useState } from "react";
+import { RefreshCw, Loader2 } from "lucide-react";
+import { RunsGallery, type RunsPreview } from "./RunsGallery";
+import { RunLogsPanel } from "./RunLogsPanel";
+import { TursorPathText } from "./TursorPathText";
+import { tursorSecondaryButtonClassName } from "./tursorButtonClasses";
+import type { SuiteGroup } from "../runs/suiteGroups";
+import type { ContextPanelPhase } from "../types/runChat";
+import type { RunLogEntry } from "../types/runLogs";
 
 type Props = {
+  backendOrigin: string | null;
   conversationId: string | null;
   phase: ContextPanelPhase;
   errorMessage: string | null;
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function RunRightPanel({
+  backendOrigin,
   conversationId,
   phase,
   errorMessage,
@@ -43,16 +45,17 @@ export function RunRightPanel({
 }: Props) {
   const [logsExpanded, setLogsExpanded] = useState(true);
   const isHistoryView = preview != null;
-  const isMissing = phase === 'missing_config';
-  const isError = phase === 'error';
-  const isBuilding = phase === 'building' || phase === 'mapping';
-  const isMapping = phase === 'mapping';
+  const isMissing = phase === "missing_config";
+  const isError = phase === "error";
+  const isBuilding = phase === "building" || phase === "mapping";
+  const isMapping = phase === "mapping";
   const showErrorOverlay = !isHistoryView && (isMissing || isError);
 
   const screenshotsSection = (
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <RunsGallery
+          backendOrigin={backendOrigin}
           conversationId={conversationId}
           groups={groups}
           highlightedCaseId={highlightedCaseId}
@@ -69,14 +72,14 @@ export function RunRightPanel({
                 {isMissing ? (
                   <TursorPathText text=".tursor folder missing in the directory path" />
                 ) : (
-                  'Run failed'
+                  "Run failed"
                 )}
               </h3>
               <p className="mt-3 text-sm text-slate-400">
                 {isMissing ? (
                   <TursorPathText text="Add `.tursor/config.json` with required `supabase` settings (url, serviceRoleKey, storageBucket), then retry." />
                 ) : (
-                  (errorMessage ?? 'Something went wrong during the run.')
+                  (errorMessage ?? "Something went wrong during the run.")
                 )}
               </p>
               <button
@@ -98,14 +101,12 @@ export function RunRightPanel({
             <div className="max-w-lg">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-cyan-400" />
               <h3 className="mt-4 text-lg font-semibold text-white sm:text-xl">
-                {isMapping
-                  ? 'Building the feature map'
-                  : 'Creating code context'}
+                {isMapping ? "Building the flow map" : "Creating code context"}
               </h3>
               <p className="mt-3 text-sm text-slate-400">
                 {isMapping
-                  ? 'Features are being read from the indexed code. Please wait before running tests.'
-                  : 'Workspace embeddings are being built. Please wait before running tests.'}
+                  ? "Screens and the paths between them are being read from the indexed code. Please wait before running tests."
+                  : "Workspace embeddings are being built. Please wait before running tests."}
               </p>
             </div>
           </div>
@@ -123,7 +124,10 @@ export function RunRightPanel({
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
       <RunLogsPanel
         logs={logs}
-        onClear={onClearLogs}
+        onClear={() => {
+          onClearLogs?.();
+          setLogsExpanded(false);
+        }}
         collapsed={!logsExpanded}
         onToggleCollapse={() => setLogsExpanded((open) => !open)}
       />
@@ -134,8 +138,8 @@ export function RunRightPanel({
     <div
       className={`grid min-h-0 flex-1 gap-3 overflow-hidden ${
         logsExpanded
-          ? 'grid-rows-[minmax(0,65fr)_minmax(0,35fr)]'
-          : 'grid-rows-[minmax(0,1fr)_auto]'
+          ? "grid-rows-[minmax(0,65fr)_minmax(0,35fr)]"
+          : "grid-rows-[minmax(0,1fr)_auto]"
       }`}
     >
       {screenshotsSection}

@@ -39,3 +39,46 @@ body,
     display: none; /* Chrome, Safari, Opera, Edge */
   }
 }
+
+/* Checkbox: Tursor gradient when ticked, no webview focus outline. Unlayered so it
+   wins over the VS Code webview default `:focus` outline. */
+input[type='checkbox'].tursor-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  margin: 0;
+  border: 1px solid rgb(100 116 139 / 0.8);
+  border-radius: 4px;
+  background-color: rgb(2 6 23 / 0.6);
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+input[type='checkbox'].tursor-checkbox:focus,
+input[type='checkbox'].tursor-checkbox:focus-visible,
+input[type='checkbox'].tursor-checkbox:active {
+  outline: none;
+  box-shadow: none;
+}
+
+input[type='checkbox'].tursor-checkbox:hover:not(:disabled) {
+  border-color: rgb(56 189 248 / 0.8);
+}
+
+input[type='checkbox'].tursor-checkbox:checked {
+  border-color: transparent;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E")
+      center / 80% no-repeat,
+    linear-gradient(to right, #0ea5e9, #2563eb, #7c3aed);
+}
+
+input[type='checkbox'].tursor-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

@@ -1,17 +1,33 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, ImageOff, XCircle } from 'lucide-react';
-import { ScreenshotCarousel } from './ScreenshotCarousel';
-import type { SuiteGroup, SuiteGroupCell } from '../runs/suiteGroups';
-import type { RunSessionStatus } from '../types/runHistory';
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  FileDown,
+  ImageOff,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+import { generateReport, type ReportFormat } from "../api/chat";
+import { saveReportFile } from "../utils/saveReport";
+import { ScreenshotCarousel } from "./ScreenshotCarousel";
+import {
+  statusPillFailureClass,
+  statusPillIconClass,
+  statusPillSuccessClass,
+} from "./statusPillClasses";
+import type { SuiteGroup, SuiteGroupCell } from "../runs/suiteGroups";
+import type { RunSessionStatus } from "../types/runHistory";
 
 export type RunsPreview = {
   key: string;
   title: string;
   screenshots: string[];
-  status: 'passed' | 'failure';
+  status: "passed" | "failure";
 };
 
 type Props = {
+  backendOrigin: string | null;
   conversationId: string | null;
   groups: SuiteGroup[];
   highlightedCaseId: string | null;
@@ -22,19 +38,19 @@ type Props = {
   onClosePreview: () => void;
 };
 
-function CellStatusPill({ status }: { status: SuiteGroupCell['status'] }) {
-  if (status === 'passed') {
+function CellStatusPill({ status }: { status: SuiteGroupCell["status"] }) {
+  if (status === "passed") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-black shadow-lg shadow-black/30">
-        <CheckCircle2 className="h-3 w-3 text-black" aria-hidden />
+      <span className={statusPillSuccessClass}>
+        <CheckCircle2 className={statusPillIconClass} aria-hidden />
         Success
       </span>
     );
   }
-  if (status === 'failure') {
+  if (status === "failure") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-black shadow-lg shadow-black/30">
-        <XCircle className="h-3 w-3 text-black" aria-hidden />
+      <span className={statusPillFailureClass}>
+        <XCircle className={statusPillIconClass} aria-hidden />
         Failure
       </span>
     );
@@ -42,15 +58,89 @@ function CellStatusPill({ status }: { status: SuiteGroupCell['status'] }) {
   return null;
 }
 
+/** Suite-level report: every case in this suite version and all of its runs. */
+function SuiteReportButton({
+  backendOrigin,
+  conversationId,
+  suiteId,
+}: {
+  backendOrigin: string | null;
+  conversationId: string | null;
+  suiteId: string;
+}) {
+  const [format, setFormat] = useState<ReportFormat>("md");
+  const [busy, setBusy] = useState(false);
+
+  const create = async () => {
+    if (!backendOrigin || busy) return;
+    setBusy(true);
+    try {
+      const report = await generateReport(backendOrigin, {
+        suiteId,
+        conversationId,
+        format,
+      });
+      const saved = await saveReportFile(report);
+      const m = report.metrics;
+      if (saved.ok) {
+        toast.success(
+          `Report saved: ${m.passed} passed, ${m.failed} failed of ${m.total}.`,
+        );
+      } else if (!saved.cancelled) {
+        toast.error(saved.error ?? "Could not save the report.");
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not create the report.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <label className="sr-only" htmlFor={`report-format-${suiteId}`}>
+        Report format
+      </label>
+      <select
+        id={`report-format-${suiteId}`}
+        value={format}
+        disabled={busy}
+        onChange={(event) => setFormat(event.target.value as ReportFormat)}
+        className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+      >
+        <option value="md">Markdown</option>
+        <option value="pdf">PDF</option>
+      </select>
+      <button
+        type="button"
+        onClick={() => void create()}
+        disabled={busy || !backendOrigin}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+        title="Create and download a report for this test suite"
+      >
+        {busy ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        ) : (
+          <FileDown className="h-3.5 w-3.5" aria-hidden />
+        )}
+        {busy ? "Preparing report…" : "Download report"}
+      </button>
+    </div>
+  );
+}
+
 function carouselStatus(
-  status: SuiteGroupCell['status'] | RunsPreview['status'],
+  status: SuiteGroupCell["status"] | RunsPreview["status"],
 ): RunSessionStatus | null {
-  if (status === 'passed') return 'success';
-  if (status === 'failure') return 'fail';
+  if (status === "passed") return "success";
+  if (status === "failure") return "fail";
   return null;
 }
 
 export function RunsGallery({
+  backendOrigin,
   conversationId,
   groups,
   highlightedCaseId,
@@ -87,7 +177,7 @@ export function RunsGallery({
     const frame = requestAnimationFrame(() => {
       if (!caseId) return;
       document.getElementById(`run-cell-${caseId}`)?.scrollIntoView({
-        block: 'nearest',
+        block: "nearest",
       });
     });
     return () => cancelAnimationFrame(frame);
@@ -170,11 +260,20 @@ export function RunsGallery({
           {groups.map((group, index) => (
             <section
               key={group.key}
-              className={index === 0 ? '' : 'border-t border-slate-800 pt-4'}
+              className={index === 0 ? "" : "border-t border-slate-800 pt-4"}
             >
-              <h3 className="mb-2 text-sm font-medium text-slate-200">
-                {group.heading}
-              </h3>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="min-w-0 truncate text-sm font-medium text-slate-200">
+                  {group.heading}
+                </h3>
+                {group.suiteId ? (
+                  <SuiteReportButton
+                    backendOrigin={backendOrigin}
+                    conversationId={conversationId}
+                    suiteId={group.suiteId}
+                  />
+                ) : null}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {group.cells.map((cell) => {
                   const shot = cell.screenshots[cell.screenshots.length - 1];
@@ -187,13 +286,13 @@ export function RunsGallery({
                       onClick={() => setOpenCaseId(cell.caseId)}
                       className={`relative rounded-xl border bg-slate-900/50 text-left transition duration-200 ease-out ${
                         highlighted
-                          ? 'z-10 scale-105 border-white ring-2 ring-white'
-                          : 'border-slate-800/80 hover:z-10 hover:border-white hover:ring-2 hover:ring-white'
+                          ? "z-10 scale-105 border-white ring-2 ring-white"
+                          : "border-slate-800/80 hover:z-10 hover:border-white hover:ring-2 hover:ring-white"
                       }`}
                     >
                       <div className="relative aspect-video overflow-hidden rounded-t-xl bg-slate-950">
-                        {cell.status === 'passed' ||
-                        cell.status === 'failure' ? (
+                        {cell.status === "passed" ||
+                        cell.status === "failure" ? (
                           <div className="absolute right-2 top-2 z-10">
                             <CellStatusPill status={cell.status} />
                           </div>
@@ -206,9 +305,11 @@ export function RunsGallery({
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center px-2 text-center text-[11px] text-slate-500">
-                            {cell.status === 'running'
-                              ? 'Waiting for screenshots'
-                              : 'No screenshots'}
+                            {cell.status === "running"
+                              ? "Waiting for screenshots"
+                              : cell.status === "queued"
+                                ? "Queued"
+                                : "No screenshots"}
                           </div>
                         )}
                       </div>
