@@ -157,9 +157,100 @@ export function useRunSessions() {
 
   const completeCurrentSession = useCallback((status: RunSessionStatus) => {
     setSessions((prev) =>
-      prev.map((s) => (s.status === 'running' ? { ...s, status } : s)),
+      prev.map((s) =>
+        s.status === 'running' || s.status === 'queued' ? { ...s, status } : s,
+      ),
     );
   }, []);
+
+  /** A group run: one session per case, the first running and the rest queued. */
+  const queueCaseSessions = useCallback(
+    (
+      conversationId: string,
+      cases: Array<{
+        caseId: string;
+        responseId: string;
+        feature: string;
+        caseTitle: string;
+        suiteId: string;
+      }>,
+    ) => {
+      const now = Date.now();
+      const queued: RunSession[] = cases.map((item, index) => ({
+        id: createRunSessionId(),
+        startedAt: now + index,
+        screenshots: [],
+        status: index === 0 ? 'running' : 'queued',
+        conversationId,
+        caseId: item.caseId,
+        responseId: item.responseId,
+        feature: item.feature,
+        caseTitle: item.caseTitle,
+        suiteId: item.suiteId || null,
+      }));
+      setSessions((prev) => {
+        const closed = prev.map((s) =>
+          s.status === 'running' || s.status === 'queued'
+            ? { ...s, status: 'fail' as const }
+            : s,
+        );
+        return [...queued, ...closed];
+      });
+      setCurrentSessionId(queued[0]?.id ?? null);
+    },
+    [],
+  );
+
+  /** The backend started this case: it becomes the running session. */
+  const activateCase = useCallback(
+    (caseId: string, runId: string, conversationId: string | null) => {
+      setSessions((prev) => {
+        const idx = prev.findIndex(
+          (s) =>
+            s.caseId === caseId &&
+            (s.status === 'queued' || s.status === 'running'),
+        );
+        if (idx === -1) {
+          return [
+            {
+              id: runId,
+              startedAt: Date.now(),
+              screenshots: [],
+              status: 'running' as const,
+              conversationId,
+              caseId,
+            },
+            ...prev,
+          ];
+        }
+        const next = [...prev];
+        next[idx] = {
+          ...next[idx]!,
+          id: runId,
+          status: 'running',
+          startedAt: Date.now(),
+        };
+        return next;
+      });
+      setCurrentSessionId(runId);
+    },
+    [],
+  );
+
+  const completeCase = useCallback(
+    (caseId: string, status: RunSessionStatus) => {
+      setSessions((prev) => {
+        const idx = prev.findIndex(
+          (s) => s.caseId === caseId && s.status === 'running',
+        );
+        if (idx === -1) return prev;
+        const next = [...prev];
+        next[idx] = { ...next[idx]!, status };
+        return next;
+      });
+    },
+    [],
+  );
 
   return {
     sessions,
@@ -170,5 +261,8 @@ export function useRunSessions() {
     appendScreenshot,
     attachRun,
     completeCurrentSession,
+    queueCaseSessions,
+    activateCase,
+    completeCase,
   };
 }

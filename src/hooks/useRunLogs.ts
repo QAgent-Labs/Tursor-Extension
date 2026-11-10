@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTursorWebSocket } from '../context/useTursorWebSocket';
-import { parseRunLogEvent, type RunLogEntry } from '../types/runLogs';
-import { parseStepUpdate } from '../types/runChat';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTursorWebSocket } from "../context/useTursorWebSocket";
+import {
+  dividerEntry,
+  parseRunLogEvent,
+  type RunLogEntry,
+} from "../types/runLogs";
+import { parseStepUpdate } from "../types/runChat";
 
-const MAX_LOG_ENTRIES = 500;
+const MAX_LOG_ENTRIES = 1000;
 
 export function useRunLogs() {
   const { subscribe } = useTursorWebSocket();
@@ -20,6 +24,12 @@ export function useRunLogs() {
     setLogs([]);
   }, []);
 
+  /** Mark where a run starts instead of wiping earlier lines. */
+  const addDivider = useCallback(
+    (label: string) => appendLog(dividerEntry(label)),
+    [appendLog],
+  );
+
   useEffect(() => {
     return subscribe((data) => {
       const entry = parseRunLogEvent(data);
@@ -32,8 +42,9 @@ export function useRunLogs() {
       if (step) {
         appendLog({
           id: `step-${Date.now()}`,
-          category: 'step',
-          level: 'info',
+          source: "backend",
+          category: "step",
+          level: "info",
           message: step,
           timestamp: Date.now(),
         });
@@ -41,5 +52,5 @@ export function useRunLogs() {
     });
   }, [subscribe, appendLog]);
 
-  return { logs, clearLogs };
+  return { logs, clearLogs, addDivider };
 }

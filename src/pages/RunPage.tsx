@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatedBackground } from '../components/AnimatedBackground';
-import { Settings } from 'lucide-react';
-import { RunSettingsSheet } from '../components/RunSettingsSheet';
-import { RunChatPanel } from '../components/RunChatPanel';
-import type { HistoryRunSelection } from '../components/ConversationHistoryList';
-import { RunRightPanel } from '../components/RunRightPanel';
-import type { ConversationSummary } from '../api/chat';
-import { buildSuiteGroups } from '../runs/suiteGroups';
-import { tursorSecondaryIconButtonClassName } from '../components/tursorButtonClasses';
-import { useRunContextFlow } from '../hooks/useRunContextFlow';
-import { useRunLogs } from '../hooks/useRunLogs';
-import { useRunSessions } from '../hooks/useRunSessions';
-import { useEnsureBackendConnection } from '../hooks/useEnsureBackendConnection';
-import { useTursorAppConfig } from '../context/useTursorAppConfig';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatedBackground } from "../components/AnimatedBackground";
+import { Settings } from "lucide-react";
+import { RunSettingsSheet } from "../components/RunSettingsSheet";
+import { RunChatPanel } from "../components/RunChatPanel";
+import type { HistoryRunSelection } from "../components/ConversationHistoryList";
+import { RunRightPanel } from "../components/RunRightPanel";
+import type { ConversationSummary } from "../api/chat";
+import { buildSuiteGroups } from "../runs/suiteGroups";
+import { tursorSecondaryIconButtonClassName } from "../components/tursorButtonClasses";
+import { useRunContextFlow } from "../hooks/useRunContextFlow";
+import { useRunLogs } from "../hooks/useRunLogs";
+import { useRunSessions } from "../hooks/useRunSessions";
+import { useEnsureBackendConnection } from "../hooks/useEnsureBackendConnection";
+import { useTursorAppConfig } from "../context/useTursorAppConfig";
 
 export default function RunPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -34,8 +34,11 @@ export default function RunPage() {
     appendScreenshot,
     attachRun,
     completeCurrentSession,
+    queueCaseSessions,
+    activateCase,
+    completeCase,
   } = useRunSessions();
-  const { logs, clearLogs } = useRunLogs();
+  const { logs, clearLogs, addDivider } = useRunLogs();
   const { config, backendOrigin, resolvedWorkspacePath } = useTursorAppConfig();
 
   useEnsureBackendConnection();
@@ -56,19 +59,34 @@ export default function RunPage() {
   const handleRunStart = useCallback(
     (conversationId?: string | null) => {
       startNewSession(conversationId);
-      clearLogs();
+      addDivider("Run started");
       setShotPreview(null);
       setHighlight(null);
     },
-    [startNewSession, clearLogs],
+    [startNewSession, addDivider],
   );
 
   const handleCdpStarted = useCallback(
-    (runId: string, conversationId: string | null) => {
-      attachRun(runId, conversationId);
+    (runId: string, conversationId: string | null, caseId: string | null) => {
+      if (caseId) {
+        activateCase(caseId, runId, conversationId);
+      } else {
+        attachRun(runId, conversationId);
+      }
       setShotPreview(null);
     },
-    [attachRun],
+    [attachRun, activateCase],
+  );
+
+  const handleRunComplete = useCallback(
+    (status: "success" | "fail", caseId: string | null) => {
+      if (caseId) {
+        completeCase(caseId, status);
+      } else {
+        completeCurrentSession(status);
+      }
+    },
+    [completeCase, completeCurrentSession],
   );
 
   const {
@@ -78,33 +96,36 @@ export default function RunPage() {
     markRunStarted,
     retryContext,
     clearRunningFlag,
+    updating,
   } = useRunContextFlow({
     onScreenshot: appendScreenshot,
     onRunStart: handleRunStart,
     onCdpStarted: handleCdpStarted,
-    onRunComplete: completeCurrentSession,
+    onRunComplete: handleRunComplete,
   });
 
-  const beginCaseRun = useCallback(
+  const beginCaseRuns = useCallback(
     (run: {
       conversationId: string;
-      caseId: string;
-      responseId: string;
-      feature: string;
-      title: string;
+      cases: Array<{
+        caseId: string;
+        responseId: string;
+        feature: string;
+        caseTitle: string;
+        suiteId: string;
+      }>;
     }) => {
-      startNewSession(run.conversationId, {
-        caseId: run.caseId,
-        responseId: run.responseId,
-        feature: run.feature,
-        caseTitle: run.title,
-      });
-      clearLogs();
+      queueCaseSessions(run.conversationId, run.cases);
+      addDivider(
+        run.cases.length === 1
+          ? `Run started · ${run.cases[0]?.caseTitle ?? "test case"}`
+          : `Run started · ${run.cases.length} test cases`,
+      );
       setShotPreview(null);
       setHighlight(null);
       markRunStarted();
     },
-    [startNewSession, clearLogs, markRunStarted],
+    [queueCaseSessions, addDivider, markRunStarted],
   );
 
   const viewCase = useCallback((caseId: string) => {
@@ -121,15 +142,17 @@ export default function RunPage() {
       if (cell?.contains(target)) return;
       setHighlight(null);
     };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [highlight]);
 
   const failChatRun = useCallback(() => {
-    completeCurrentSession('fail');
+    completeCurrentSession("fail");
   }, [completeCurrentSession]);
 
-  const hasActiveSession = sessions.some((s) => s.status === 'running');
+  const hasActiveSession = sessions.some(
+    (s) => s.status === "running" || s.status === "queued",
+  );
 
   useEffect(() => {
     if (!hasActiveSession) {
@@ -140,7 +163,7 @@ export default function RunPage() {
   const liveSession =
     sessions.find(
       (session) =>
-        session.status === 'running' &&
+        session.status === "running" &&
         session.conversationId === activeConversationId &&
         session.caseId,
     ) ?? null;
@@ -148,6 +171,7 @@ export default function RunPage() {
     conversationSummary?.cdp_runs ?? [],
     sessions,
     activeConversationId,
+    conversationSummary?.plans ?? [],
   );
 
   return (
@@ -158,12 +182,21 @@ export default function RunPage() {
         <RunChatPanel
           backendOrigin={backendOrigin}
           workspacePath={resolvedWorkspacePath || config.workspacePath}
-          contextReady={phase === 'ready'}
+          contextReady={phase === "ready"}
+          contextNote={
+            phase === "building"
+              ? "Creating code context… you can send once it is ready."
+              : phase === "mapping"
+                ? "Building the flow map… you can send once it is ready."
+                : updating
+                  ? "Updating code context after a file change. You can keep chatting."
+                  : null
+          }
           runs={sessions}
           selectedRunId={shotPreview?.key ?? null}
           onConversationChange={handleConversationChange}
           onSummaryChange={setConversationSummary}
-          onRunCase={beginCaseRun}
+          onRunCases={beginCaseRuns}
           onViewCase={viewCase}
           onRunFailed={failChatRun}
         />
@@ -182,6 +215,7 @@ export default function RunPage() {
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col pt-3">
             <RunRightPanel
+              backendOrigin={backendOrigin}
               conversationId={activeConversationId}
               phase={phase}
               errorMessage={errorMessage}
@@ -198,7 +232,7 @@ export default function RunPage() {
                 shotPreview
                   ? {
                       key: shotPreview.key,
-                      title: shotPreview.title || 'Test case',
+                      title: shotPreview.title || "Test case",
                       screenshots: shotPreview.screenshots,
                       status: shotPreview.status,
                     }

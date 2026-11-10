@@ -250,7 +250,16 @@ type WebviewToHostMessage =
     }
   | { command: 'checkTursorCli'; requestId: string }
   | { command: 'pickWorkspaceFolder' }
-  | { command: 'requestDefaultWorkspace' };
+  | { command: 'requestDefaultWorkspace' }
+  | SaveReportMessage;
+
+type SaveReportMessage = {
+  command: 'saveReport';
+  requestId: string;
+  filename: string;
+  encoding: 'utf-8' | 'base64';
+  content: string;
+};
 
 type TursorSetupPhase = 'needs_install' | 'needs_start' | 'ready';
 
@@ -321,6 +330,80 @@ function isPickWorkspaceMessage(msg: unknown): boolean {
     msg !== null &&
     (msg as { command?: string }).command === 'pickWorkspaceFolder'
   );
+}
+
+function isSaveReportMessage(msg: unknown): msg is SaveReportMessage {
+  if (typeof msg !== 'object' || msg === null) return false;
+  const m = msg as Record<string, unknown>;
+  return (
+    m.command === 'saveReport' &&
+    typeof m.requestId === 'string' &&
+    typeof m.filename === 'string' &&
+    (m.encoding === 'utf-8' || m.encoding === 'base64') &&
+    typeof m.content === 'string'
+  );
+}
+
+/** Save a generated report where the user picks, defaulting to .tursor/reports/. */
+async function saveReport(
+  webview: vscode.Webview,
+  message: SaveReportMessage,
+): Promise<void> {
+  const reply = (body: Record<string, unknown>) =>
+    void webview.postMessage({
+      type: 'tursorReportSaved',
+      requestId: message.requestId,
+      ...body,
+    });
+
+  const filename = path.basename(message.filename).replace(/[^\w.-]/g, '_');
+  const extension = path.extname(filename).toLowerCase();
+  if (extension !== '.md' && extension !== '.pdf') {
+    reply({ ok: false, error: 'Reports must be .md or .pdf files.' });
+    return;
+  }
+
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+  const defaultUri = folder
+    ? vscode.Uri.joinPath(folder, '.tursor', 'reports', filename)
+    : vscode.Uri.file(path.join(os.homedir(), filename));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    saveLabel: 'Save report',
+    filters: extension === '.pdf' ? { PDF: ['pdf'] } : { Markdown: ['md'] },
+  });
+  if (!target) {
+    reply({ ok: false, cancelled: true });
+    return;
+  }
+
+  try {
+    const bytes =
+      message.encoding === 'base64'
+        ? Buffer.from(message.content, 'base64')
+        : Buffer.from(message.content, 'utf8');
+    await vscode.workspace.fs.createDirectory(
+      vscode.Uri.joinPath(target, '..'),
+    );
+    await vscode.workspace.fs.writeFile(target, bytes);
+    reply({ ok: true, path: target.fsPath });
+    const action = await vscode.window.showInformationMessage(
+      `Tursor report saved: ${path.basename(target.fsPath)}`,
+      'Open',
+    );
+    if (action === 'Open') {
+      if (extension === '.md') {
+        await vscode.window.showTextDocument(target);
+      } else {
+        await vscode.env.openExternal(target);
+      }
+    }
+  } catch (err) {
+    reply({
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 function isRequestDefaultWorkspaceMessage(msg: unknown): boolean {
@@ -674,9 +757,11 @@ function shouldIgnore(filePath: string): boolean {
     filePath.includes('dist') ||
     filePath.includes('.next') ||
     filePath.includes('build') ||
-    filePath.includes(`${path.sep}.tursor${path.sep}embeddings`) ||
-    filePath.includes('/.tursor/embeddings') ||
-    filePath.includes('\\.tursor\\embeddings')
+    // Tursor's own folder (index, screenshots, saved reports, config) is not app code.
+    filePath.includes(`${path.sep}.tursor${path.sep}`) ||
+    filePath.endsWith(`${path.sep}.tursor`) ||
+    filePath.includes('/.tursor/') ||
+    filePath.includes('\\.tursor\\')
   );
 }
 
@@ -973,6 +1058,11 @@ function openTursorPanel(context: vscode.ExtensionContext): void {
 
     if (isRequestDefaultWorkspaceMessage(message)) {
       postEditorWorkspace(panel.webview);
+      return;
+    }
+
+    if (isSaveReportMessage(message)) {
+      void saveReport(panel.webview, message);
       return;
     }
 

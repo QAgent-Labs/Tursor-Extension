@@ -1,5 +1,16 @@
-import { CheckCircle2, CircleDashed, ImageIcon, XCircle } from 'lucide-react';
+import {
+  CheckCircle2,
+  CircleDashed,
+  Clock,
+  ImageIcon,
+  XCircle,
+} from 'lucide-react';
 import { shortSessionId, type RunSession } from '../types/runHistory';
+import {
+  statusPillFailureClass,
+  statusPillIconClass,
+  statusPillSuccessClass,
+} from './statusPillClasses';
 
 type Props = {
   sessions: RunSession[];
@@ -21,17 +32,25 @@ function formatStartedAt(ts: number): string {
 function StatusBadge({ status }: { status: RunSession['status'] }) {
   if (status === 'success') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
-        <CheckCircle2 className="h-3 w-3" aria-hidden />
-        Passed
+      <span className={statusPillSuccessClass}>
+        <CheckCircle2 className={statusPillIconClass} aria-hidden />
+        Success
       </span>
     );
   }
   if (status === 'fail') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-300">
-        <XCircle className="h-3 w-3" aria-hidden />
-        Failed
+      <span className={statusPillFailureClass}>
+        <XCircle className={statusPillIconClass} aria-hidden />
+        Failure
+      </span>
+    );
+  }
+  if (status === 'queued') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+        <Clock className="h-3 w-3" aria-hidden />
+        Queued
       </span>
     );
   }

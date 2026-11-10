@@ -8,9 +8,10 @@ import {
 } from '../workspaceInit';
 import {
   parseContextBuilding,
-  parseFeatureMapBuilding,
+  parseFlowMapBuilding,
   parseContextError,
   parseContextReady,
+  parseContextUpdating,
   parseScreenshotUrl,
   type ContextPanelPhase,
 } from '../types/runChat';
@@ -18,8 +19,13 @@ import {
 type RunFlowOptions = {
   onScreenshot: (url: string) => void;
   onRunStart?: () => void;
-  onCdpStarted?: (runId: string, conversationId: string | null) => void;
-  onRunComplete?: (status: 'success' | 'fail') => void;
+  onCdpStarted?: (
+    runId: string,
+    conversationId: string | null,
+    caseId: string | null,
+  ) => void;
+  /** caseId is set when one case of a run (or group run) finished. */
+  onRunComplete?: (status: 'success' | 'fail', caseId: string | null) => void;
 };
 
 export function useRunContextFlow({
@@ -34,6 +40,8 @@ export function useRunContextFlow({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  /** A background update of an index that is already usable. */
+  const [updating, setUpdating] = useState(false);
   const contextRequestedRef = useRef(false);
 
   const startCdpRun = useCallback(() => {
@@ -103,25 +111,35 @@ export function useRunContextFlow({
         return;
       }
 
-      if (parseFeatureMapBuilding(data)) {
+      if (parseFlowMapBuilding(data)) {
         setPhase('mapping');
+        setErrorMessage(null);
+        return;
+      }
+
+      if (parseContextUpdating(data)) {
+        // An index already exists, so chat and runs can go on while it updates.
+        setPhase('ready');
+        setUpdating(true);
         setErrorMessage(null);
         return;
       }
 
       const err = parseContextError(data);
       if (err) {
+        setUpdating(false);
         setErrorMessage(err.message);
         setPhase(
           err.code === 'missing_tursor_config' ? 'missing_config' : 'error',
         );
         setIsRunning(false);
-        onRunComplete?.('fail');
+        onRunComplete?.('fail', null);
         return;
       }
 
       if (parseContextReady(data)) {
         setPhase('ready');
+        setUpdating(false);
         setErrorMessage(null);
         return;
       }
@@ -139,6 +157,7 @@ export function useRunContextFlow({
         const event = data as {
           runId?: string;
           conversationId?: string | null;
+          caseId?: string | null;
         };
         if (typeof event.runId === 'string' && event.runId) {
           onCdpStarted?.(
@@ -146,6 +165,7 @@ export function useRunContextFlow({
             typeof event.conversationId === 'string'
               ? event.conversationId
               : null,
+            typeof event.caseId === 'string' ? event.caseId : null,
           );
           setHasStarted(true);
           setIsRunning(true);
@@ -158,9 +178,25 @@ export function useRunContextFlow({
         data !== null &&
         (data as { type?: string }).type === 'complete'
       ) {
+        const event = data as {
+          status?: string;
+          caseId?: string | null;
+          batchId?: string | null;
+        };
+        // In a group run the next case starts right after; batch_complete ends it.
+        if (!event.batchId) setIsRunning(false);
+        onRunComplete?.(
+          event.status === 'success' ? 'success' : 'fail',
+          typeof event.caseId === 'string' ? event.caseId : null,
+        );
+      }
+
+      if (
+        typeof data === 'object' &&
+        data !== null &&
+        (data as { type?: string }).type === 'batch_complete'
+      ) {
         setIsRunning(false);
-        const runStatus = (data as { status?: string }).status;
-        onRunComplete?.(runStatus === 'success' ? 'success' : 'fail');
       }
     });
   }, [subscribe, onScreenshot, onCdpStarted, onRunComplete]);
@@ -198,6 +234,7 @@ export function useRunContextFlow({
     hasStarted,
     isRunning,
     contextReady: phase === 'ready',
+    updating,
     startRun: startCdpRun,
     markRunStarted,
     retryRun,

@@ -77,8 +77,13 @@ export function parseContextBuilding(data: unknown): boolean {
   return isRecord(data) && data.type === 'context_building';
 }
 
-export function parseFeatureMapBuilding(data: unknown): boolean {
-  return isRecord(data) && data.type === 'feature_map_building';
+export function parseFlowMapBuilding(data: unknown): boolean {
+  return isRecord(data) && data.type === 'flow_map_building';
+}
+
+/** The backend is updating an existing index; chat keeps working meanwhile. */
+export function parseContextUpdating(data: unknown): boolean {
+  return isRecord(data) && data.type === 'context_updating';
 }
 
 export function parseContextReady(data: unknown): boolean {

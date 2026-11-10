@@ -1,6 +1,13 @@
 export type RunLogCategory =
   | 'connection'
   | 'context'
+  | 'flowmap'
+  | 'intent'
+  | 'retrieval'
+  | 'llm'
+  | 'suite'
+  | 'prd'
+  | 'report'
   | 'cdp'
   | 'step'
   | 'screenshot'
@@ -10,23 +17,39 @@ export type RunLogCategory =
 
 export type RunLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'success';
 
+/** backend and ai come over the socket; divider marks where a run started. */
+export type RunLogSource = 'backend' | 'ai' | 'divider';
+
 export type RunLogEntry = {
   id: string;
+  source: RunLogSource;
   category: RunLogCategory;
   level: RunLogLevel;
   message: string;
   timestamp: number;
   stepId?: string;
   meta?: Record<string, unknown>;
+  durationMs?: number;
+  /** Lines of one chat turn, context build, run, or report share a trace. */
+  traceId?: string;
+  traceKind?: string;
+  traceLabel?: string;
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
-const LOG_CATEGORIES = new Set<RunLogCategory>([
+export const LOG_CATEGORIES = new Set<RunLogCategory>([
   'connection',
   'context',
+  'flowmap',
+  'intent',
+  'retrieval',
+  'llm',
+  'suite',
+  'prd',
+  'report',
   'cdp',
   'step',
   'screenshot',
@@ -85,13 +108,37 @@ export function parseRunLogEvent(data: unknown): RunLogEntry | null {
       ? (data.meta as Record<string, unknown>)
       : undefined;
 
+  const text = (key: string) =>
+    typeof data[key] === 'string' && (data[key] as string).trim()
+      ? (data[key] as string)
+      : undefined;
+
   return {
     id: nextLogId(),
+    source: data.source === 'ai' ? 'ai' : 'backend',
     category,
     level,
     message: data.message,
     timestamp: parseTimestamp(data.timestamp),
     stepId,
     meta,
+    durationMs:
+      typeof data.durationMs === 'number' && Number.isFinite(data.durationMs)
+        ? data.durationMs
+        : undefined,
+    traceId: text('traceId'),
+    traceKind: text('traceKind'),
+    traceLabel: text('traceLabel'),
+  };
+}
+
+export function dividerEntry(label: string): RunLogEntry {
+  return {
+    id: nextLogId(),
+    source: 'divider',
+    category: 'system',
+    level: 'info',
+    message: label,
+    timestamp: Date.now(),
   };
 }

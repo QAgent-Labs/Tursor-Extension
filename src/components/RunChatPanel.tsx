@@ -9,9 +9,11 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowRight,
+  Clock,
   History,
+  ListChecks,
   MessageSquare,
-  Play,
+  PlayCircle,
   ScrollText,
   Send,
   SquarePen,
@@ -32,7 +34,7 @@ import {
 import {
   getConversation,
   listConversations,
-  runCdpPlan,
+  runCases,
   sendConversationMessage,
   startConversation,
   suiteFromMetadata,
@@ -47,6 +49,17 @@ import type { RunSession } from '../types/runHistory';
 import { useTursorWebSocket } from '../context/useTursorWebSocket';
 
 type PanelView = 'chat' | 'history';
+
+/** Where a case is in the current run: running now, waiting in a group, or idle. */
+type CaseRunState = 'running' | 'queued' | null;
+
+/** Start these cases; wholeSuite runs the suite by id so its order is the backend's. */
+type RunRequest = {
+  cases: SuiteCaseView[];
+  suite: ChatSuite | null;
+  responseId: string;
+  wholeSuite: boolean;
+};
 
 const THINKING_PHRASES = ['Thinking', 'Checking the code', 'Writing a reply'];
 
@@ -98,16 +111,21 @@ type Props = {
   backendOrigin: string | null;
   workspacePath: string | null;
   contextReady: boolean;
+  /** Shown above the message box while the code context is built or updated. */
+  contextNote: string | null;
   runs: RunSession[];
   selectedRunId: string | null;
   onConversationChange?: (conversationId: string | null) => void;
   onSummaryChange?: (summary: ConversationSummary) => void;
-  onRunCase: (run: {
+  onRunCases: (run: {
     conversationId: string;
-    caseId: string;
-    responseId: string;
-    feature: string;
-    title: string;
+    cases: Array<{
+      caseId: string;
+      responseId: string;
+      feature: string;
+      caseTitle: string;
+      suiteId: string;
+    }>;
   }) => void;
   onViewCase: (caseId: string) => void;
   onRunFailed: () => void;
@@ -121,11 +139,12 @@ export function RunChatPanel({
   backendOrigin,
   workspacePath,
   contextReady,
+  contextNote,
   runs,
   selectedRunId,
   onConversationChange,
   onSummaryChange,
-  onRunCase,
+  onRunCases,
   onViewCase,
   onRunFailed,
 }: Props) {
@@ -147,22 +166,20 @@ export function RunChatPanel({
   const [historyTick, setHistoryTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
-  const [runningCaseId, setRunningCaseId] = useState<string | null>(null);
+  const [runningCaseIds, setRunningCaseIds] = useState<string[]>([]);
   const [focusRequest, setFocusRequest] = useState<{
     caseId: string;
     token: number;
   } | null>(null);
   const openRequestRef = useRef(0);
   const runsRef = useRef(runs);
-  const runningCaseRef = useRef(runningCaseId);
   runsRef.current = runs;
-  runningCaseRef.current = runningCaseId;
 
   const connected = status === 'connected';
 
   useEffect(() => {
     onConversationChange?.(conversationId);
-    setRunningCaseId(null);
+    setRunningCaseIds([]);
   }, [conversationId, onConversationChange]);
 
   useEffect(() => {
@@ -179,11 +196,9 @@ export function RunChatPanel({
       if (!data || typeof data !== 'object') return;
       if ((data as { type?: string }).type !== 'complete') return;
       setHistoryTick((tick) => tick + 1);
-      const caseId = runningCaseRef.current;
-      const outcome =
-        (data as { status?: string }).status === 'success'
-          ? 'passed'
-          : 'failure';
+      const event = data as { status?: string; caseId?: string | null };
+      const caseId = typeof event.caseId === 'string' ? event.caseId : null;
+      const outcome = event.status === 'success' ? 'passed' : 'failure';
       if (caseId) {
         const session = runsRef.current.find(
           (item) =>
@@ -200,9 +215,10 @@ export function RunChatPanel({
             feature: session?.feature ?? '',
             title: session?.caseTitle ?? '',
             kind: '',
+            suite_id: session?.suiteId ?? '',
           }),
         );
-        setRunningCaseId(null);
+        setRunningCaseIds((ids) => ids.filter((id) => id !== caseId));
       }
       if (!backendOrigin || !conversationId) return;
       void getConversation(backendOrigin, conversationId)
@@ -211,9 +227,8 @@ export function RunChatPanel({
             ...loaded.summary,
             cdp_runs: mergeRuns(loaded.summary.cdp_runs, prev.cdp_runs),
           }));
-          setRunningCaseId(null);
         })
-        .catch(() => setRunningCaseId(null));
+        .catch(() => undefined);
     });
   }, [subscribe, backendOrigin, conversationId]);
 
@@ -299,7 +314,8 @@ export function RunChatPanel({
 
   const sendMessage = useCallback(() => {
     const text = draft.trim();
-    if (!text || busy) return;
+    // Enter sends too, so the button's guard is repeated here.
+    if (!text || busy || !contextReady) return;
 
     const id = createId('user');
     setMessages((prev) => [
@@ -365,7 +381,15 @@ export function RunChatPanel({
         );
       })
       .finally(() => setBusy(false));
-  }, [draft, busy, connected, conversationId, backendOrigin, workspacePath]);
+  }, [
+    draft,
+    busy,
+    contextReady,
+    connected,
+    conversationId,
+    backendOrigin,
+    workspacePath,
+  ]);
 
   useEffect(() => {
     if (panelView !== 'history' || !backendOrigin || !workspacePath) return;
@@ -443,29 +467,37 @@ export function RunChatPanel({
       });
   };
 
-  const onRunTest = useCallback(
-    (testCase: SuiteCaseView, responseId: string, feature: string) => {
-      const alreadyRunning = runs.some(
-        (session) =>
-          session.status === 'running' &&
-          session.conversationId === conversationId &&
-          Boolean(session.caseId),
-      );
-      if (!backendOrigin || runningCaseId || alreadyRunning || !conversationId)
+  const busyRunning =
+    runningCaseIds.length > 0 ||
+    runs.some(
+      (session) =>
+        (session.status === 'running' || session.status === 'queued') &&
+        session.conversationId === conversationId &&
+        Boolean(session.caseId),
+    );
+
+  const onRunTests = useCallback(
+    ({ cases, suite, responseId, wholeSuite }: RunRequest) => {
+      if (!backendOrigin || busyRunning || !conversationId || !cases.length)
         return;
-      onRunCase({
+      const caseIds = cases.map((item) => item.id);
+      onRunCases({
         conversationId,
-        caseId: testCase.id,
-        responseId,
-        feature,
-        title: testCase.title,
+        cases: cases.map((item) => ({
+          caseId: item.id,
+          responseId,
+          feature: suite?.feature ?? '',
+          caseTitle: item.title,
+          suiteId: suite?.suiteId ?? '',
+        })),
       });
-      setRunningCaseId(testCase.id);
-      void runCdpPlan(backendOrigin, {
-        cdpStepsId: testCase.id,
-        conversationId,
-      }).catch((err: unknown) => {
-        setRunningCaseId(null);
+      setRunningCaseIds(caseIds);
+      const request =
+        wholeSuite && suite?.suiteId
+          ? { conversationId, suiteId: suite.suiteId }
+          : { conversationId, caseIds };
+      void runCases(backendOrigin, request).catch((err: unknown) => {
+        setRunningCaseIds([]);
         onRunFailed();
         const detail =
           err instanceof Error ? err.message : 'Could not start the run.';
@@ -480,14 +512,21 @@ export function RunChatPanel({
         ]);
       });
     },
-    [
-      backendOrigin,
-      runningCaseId,
-      conversationId,
-      onRunCase,
-      onRunFailed,
-      runs,
-    ],
+    [backendOrigin, busyRunning, conversationId, onRunCases, onRunFailed],
+  );
+
+  const caseRunState = useCallback(
+    (caseId: string): CaseRunState => {
+      const session = runs.find(
+        (item) =>
+          item.caseId === caseId &&
+          item.conversationId === conversationId &&
+          (item.status === 'running' || item.status === 'queued'),
+      );
+      if (session) return session.status === 'running' ? 'running' : 'queued';
+      return runningCaseIds.includes(caseId) ? 'queued' : null;
+    },
+    [runs, conversationId, runningCaseIds],
   );
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -496,14 +535,6 @@ export function RunChatPanel({
       sendMessage();
     }
   };
-
-  const liveCase = runs.find(
-    (session) =>
-      session.status === 'running' &&
-      session.conversationId === conversationId &&
-      session.caseId,
-  );
-  const activeRunCaseId = liveCase?.caseId ?? runningCaseId;
 
   const connectionLabel =
     status === 'connected'
@@ -608,8 +639,9 @@ export function RunChatPanel({
                   runs={summary.cdp_runs}
                   sessions={runs}
                   conversationId={conversationId}
-                  runningCaseId={activeRunCaseId}
-                  onRunTest={onRunTest}
+                  runBlocked={busyRunning}
+                  caseRunState={caseRunState}
+                  onRunTests={onRunTests}
                   onViewCase={onViewCase}
                 />
               ))
@@ -618,6 +650,18 @@ export function RunChatPanel({
           </div>
 
           <div className="border-t border-slate-800/80 p-3">
+            {contextNote ? (
+              <div
+                role="status"
+                className="mb-2 flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200"
+              >
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin"
+                  aria-hidden
+                />
+                <span>{contextNote}</span>
+              </div>
+            ) : null}
             <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 p-2 ring-1 ring-slate-700/50">
               <label htmlFor={formId} className="sr-only">
                 Message Tursor
@@ -649,23 +693,31 @@ export function RunChatPanel({
               </DisabledReasonTooltip>
               <div className="flex shrink-0 flex-col items-center gap-2">
                 <DisabledReasonTooltip
-                  disabled={!connected || !draft.trim()}
+                  disabled={!connected || !contextReady || !draft.trim()}
                   reason={
                     !connected
                       ? 'Not connected to the backend.'
-                      : !draft.trim()
-                        ? 'Enter a message to send.'
-                        : null
+                      : !contextReady
+                        ? 'Waiting for the code context to be ready…'
+                        : !draft.trim()
+                          ? 'Enter a message to send.'
+                          : null
                   }
                 >
                   <button
                     type="button"
                     onClick={sendMessage}
                     disabled={
-                      !connected || !draft.trim() || busy || !conversationId
+                      !connected ||
+                      !contextReady ||
+                      !draft.trim() ||
+                      busy ||
+                      !conversationId
                     }
                     className={tursorPrimaryIconButtonClassName}
-                    aria-label="Send message"
+                    aria-label={
+                      contextReady ? 'Send message' : 'Waiting for context…'
+                    }
                   >
                     <Send className="h-4 w-4" />
                   </button>
@@ -813,117 +865,132 @@ function caseWasRun(
     (session) =>
       session.caseId === caseId &&
       session.conversationId === conversationId &&
-      session.status !== 'running',
+      session.status !== 'running' &&
+      session.status !== 'queued',
   );
 }
 
-function CaseRunButton({
+type CaseActions = {
+  runBlocked: boolean;
+  caseRunState: (caseId: string) => CaseRunState;
+  onRunTests: (request: RunRequest) => void;
+  onViewCase: (caseId: string) => void;
+};
+
+const viewRunClassName =
+  'mt-2 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40';
+
+/** Under a case: its live state while it runs, or View run once it has run. */
+function CaseRunStatus({
   testCase,
-  responseId,
-  feature,
   finished,
-  runningCaseId,
-  onRunTest,
+  runBlocked,
+  caseRunState,
   onViewCase,
 }: {
   testCase: SuiteCaseView;
-  responseId: string;
-  feature: string;
   finished: boolean;
-  runningCaseId: string | null;
-  onRunTest: (
-    testCase: SuiteCaseView,
-    responseId: string,
-    feature: string,
-  ) => void;
-  onViewCase: (caseId: string) => void;
-}) {
-  const running = runningCaseId === testCase.id;
-  const blocked = Boolean(runningCaseId);
-  const viewClass =
-    'mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-xs font-semibold text-black shadow-[0_6px_20px_rgba(255,255,255,0.12)] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm';
-  if (running) {
+} & Omit<CaseActions, 'onRunTests'>) {
+  const state = caseRunState(testCase.id);
+  if (state === 'running') {
     return (
-      <button type="button" disabled className={viewClass}>
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+      <span className={`${viewRunClassName} pointer-events-none`}>
+        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
         Running
-      </button>
+      </span>
     );
   }
-  if (finished) {
+  if (state === 'queued') {
     return (
-      <button
-        type="button"
-        disabled={blocked}
-        onClick={() => onViewCase(testCase.id)}
-        className={viewClass}
-      >
-        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-        View test
-      </button>
+      <span className={`${viewRunClassName} pointer-events-none opacity-70`}>
+        <Clock className="h-3 w-3" aria-hidden />
+        Queued
+      </span>
     );
   }
+  if (!finished) return null;
   return (
     <button
       type="button"
-      disabled={blocked}
-      onClick={() => onRunTest(testCase, responseId, feature)}
-      className={`${tursorPrimaryButtonClassName} mt-2`}
+      disabled={runBlocked}
+      onClick={() => onViewCase(testCase.id)}
+      className={viewRunClassName}
     >
-      <Play className="h-3.5 w-3.5" aria-hidden />
-      Run Test
+      <ArrowRight className="h-3 w-3" aria-hidden />
+      View run
     </button>
   );
 }
 
 function SuiteCaseBlock({
   testCase,
-  responseId,
-  feature,
   runs,
   sessions,
   conversationId,
-  runningCaseId,
-  onRunTest,
-  onViewCase,
+  selected,
+  onToggle,
+  ...actions
 }: {
   testCase: SuiteCaseView;
-  responseId: string;
-  feature: string;
   runs: ConversationSummary['cdp_runs'];
   sessions: RunSession[];
   conversationId: string | null;
-  runningCaseId: string | null;
-  onRunTest: (
-    testCase: SuiteCaseView,
-    responseId: string,
-    feature: string,
-  ) => void;
-  onViewCase: (caseId: string) => void;
-}) {
+  selected: boolean;
+  onToggle: (caseId: string) => void;
+} & CaseActions) {
+  const checkboxId = `case-select-${testCase.id}`;
   return (
-    <li>
-      <span className="font-semibold text-slate-50">{testCase.title}</span>
-      {testCase.explanation ? (
-        <FormattedAiText text={testCase.explanation} className="mt-1" />
-      ) : null}
-      <CaseRunButton
-        testCase={testCase}
-        responseId={responseId}
-        feature={feature}
-        finished={caseWasRun(runs, sessions, conversationId, testCase.id)}
-        runningCaseId={runningCaseId}
-        onRunTest={onRunTest}
-        onViewCase={onViewCase}
-      />
+    <li className="rounded-lg border border-slate-700/50 bg-slate-950/30 px-3 py-2.5">
+      <div className="flex items-start gap-2.5">
+        <input
+          id={checkboxId}
+          type="checkbox"
+          checked={selected}
+          disabled={actions.runBlocked}
+          onChange={() => onToggle(testCase.id)}
+          className="tursor-checkbox mt-1 h-3.5 w-3.5 shrink-0"
+          aria-label={`Select ${testCase.title}`}
+        />
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor={checkboxId}
+            className="cursor-pointer font-semibold text-slate-50"
+          >
+            {testCase.title}
+          </label>
+          {testCase.explanation ? (
+            <FormattedAiText
+              text={testCase.explanation}
+              className="mt-1 text-slate-300"
+            />
+          ) : null}
+          {testCase.requirementIds && testCase.requirementIds.length > 0 ? (
+            <p className="mt-1 text-[11px] text-cyan-300/80">
+              Covers {testCase.requirementIds.join(', ')}
+            </p>
+          ) : null}
+          <CaseRunStatus
+            testCase={testCase}
+            finished={caseWasRun(runs, sessions, conversationId, testCase.id)}
+            runBlocked={actions.runBlocked}
+            caseRunState={actions.caseRunState}
+            onViewCase={actions.onViewCase}
+          />
+        </div>
+      </div>
     </li>
   );
 }
 
 function suiteOverview(text: string, fallback: string): string {
-  const first = text.split(/\n\s*\n/)[0]?.trim() ?? '';
-  return first || fallback;
+  return text.trim() || fallback;
 }
+
+const KIND_HEADING: Record<SuiteCaseView['kind'], string> = {
+  success: 'Success cases',
+  failure: 'Failure cases',
+  edge: 'Edge cases',
+};
 
 function SuiteReply({
   suite,
@@ -932,9 +999,7 @@ function SuiteReply({
   runs,
   sessions,
   conversationId,
-  runningCaseId,
-  onRunTest,
-  onViewCase,
+  ...actions
 }: {
   suite: ChatSuite;
   overview: string;
@@ -942,60 +1007,140 @@ function SuiteReply({
   runs: ConversationSummary['cdp_runs'];
   sessions: RunSession[];
   conversationId: string | null;
-  runningCaseId: string | null;
-  onRunTest: (
-    testCase: SuiteCaseView,
-    responseId: string,
-    feature: string,
-  ) => void;
-  onViewCase: (caseId: string) => void;
-}) {
-  const success = suite.cases.filter((item) => item.kind === 'success');
-  const failure = suite.cases.filter((item) => item.kind === 'failure');
-  const edges = suite.cases.filter((item) => item.kind === 'edge');
+} & CaseActions) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggle = (caseId: string) =>
+    setSelected((current) =>
+      current.includes(caseId)
+        ? current.filter((id) => id !== caseId)
+        : [...current, caseId],
+    );
+  const allSelected =
+    suite.cases.length > 0 && selected.length === suite.cases.length;
+  const feature = suite.feature.trim() || 'this feature';
+  const fallback = suite.reused
+    ? `Reusing the **${feature}** suite as it is.`
+    : `Here is the test suite for **${feature}**.`;
+  const chosen = suite.cases.filter((item) => selected.includes(item.id));
+  const groups = (['success', 'failure', 'edge'] as const)
+    .map((kind) => ({
+      kind,
+      cases: suite.cases.filter((item) => item.kind === kind),
+    }))
+    .filter((group) => group.cases.length > 0);
   const shared = {
-    responseId,
-    feature: suite.feature,
     runs,
     sessions,
     conversationId,
-    runningCaseId,
-    onRunTest,
-    onViewCase,
+    onToggle: toggle,
+    ...actions,
   };
-  const feature = suite.feature.trim() || 'this feature';
-  const onlyCase = suite.cases.length === 1 ? suite.cases[0] : null;
-  const fallback = onlyCase
-    ? `For ${feature}, here is the ${onlyCase.title}.`
-    : `For ${feature}, here is the test suite generated.`;
-  const intro = suiteOverview(overview, fallback);
+
   return (
     <div className="flex flex-col gap-3">
-      <p className="whitespace-pre-wrap">{intro}</p>
-      <ul className="list-disc space-y-3 pl-5 marker:text-slate-200">
-        {success.map((testCase) => (
-          <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
-        ))}
-        {failure.map((testCase) => (
-          <SuiteCaseBlock key={testCase.id} testCase={testCase} {...shared} />
-        ))}
-        {edges.length > 0 ? (
-          <li>
-            <span className="font-semibold text-slate-50">Edge cases</span>
-            <ul className="mt-2 list-[circle] space-y-3 pl-5 marker:text-slate-300">
-              {edges.map((testCase) => (
-                <SuiteCaseBlock
-                  key={testCase.id}
-                  testCase={testCase}
-                  {...shared}
-                />
-              ))}
-            </ul>
-          </li>
-        ) : null}
-      </ul>
+      {suite.version > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <span className="text-sm font-semibold text-slate-100">
+            {suite.moduleName || feature}
+          </span>
+          <span className="rounded-full border border-slate-600 px-2 py-0.5">
+            v{suite.version}
+          </span>
+          {suite.reused ? (
+            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
+              Reused
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      <FormattedAiText text={suiteOverview(overview, fallback)} />
+      <p className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+        Tick the test cases you want and click <strong>Run selected</strong>, or
+        run every case with <strong>Run suite</strong>.
+      </p>
+      {suite.cases.length > 1 ? (
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            disabled={actions.runBlocked}
+            onChange={() =>
+              setSelected(allSelected ? [] : suite.cases.map((item) => item.id))
+            }
+            className="tursor-checkbox h-3.5 w-3.5"
+          />
+          Select all ({suite.cases.length})
+        </label>
+      ) : null}
+      {groups.map((group) => (
+        <section key={group.kind} className="flex flex-col gap-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            {KIND_HEADING[group.kind]}
+          </h4>
+          <ul className="flex flex-col gap-2">
+            {group.cases.map((testCase) => (
+              <SuiteCaseBlock
+                key={testCase.id}
+                testCase={testCase}
+                selected={selected.includes(testCase.id)}
+                {...shared}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+      <div className="flex flex-wrap gap-2 border-t border-slate-700/60 pt-3">
+        <button
+          type="button"
+          disabled={actions.runBlocked || chosen.length === 0}
+          onClick={() => {
+            actions.onRunTests({
+              cases: chosen,
+              suite,
+              responseId,
+              wholeSuite: false,
+            });
+            setSelected([]);
+          }}
+          className={tursorPrimaryButtonClassName}
+        >
+          <ListChecks className="h-3.5 w-3.5" aria-hidden />
+          Run selected ({chosen.length})
+        </button>
+        <button
+          type="button"
+          disabled={actions.runBlocked}
+          onClick={() =>
+            actions.onRunTests({
+              cases: suite.cases,
+              suite,
+              responseId,
+              wholeSuite: true,
+            })
+          }
+          className={tursorPrimaryButtonClassName}
+        >
+          <PlayCircle className="h-3.5 w-3.5" aria-hidden />
+          Run suite ({suite.cases.length})
+        </button>
+      </div>
     </div>
   );
+}
+
+/** Messages from before suites saved one plan id; show it as a one-case suite. */
+function legacySuite(cdpStepsId: string): ChatSuite {
+  return {
+    feature: '',
+    suiteId: '',
+    version: 0,
+    moduleKey: '',
+    moduleName: '',
+    reused: false,
+    cases: [
+      { id: cdpStepsId, kind: 'success', title: 'Test', explanation: '' },
+    ],
+  };
 }
 
 function ChatBubble({
@@ -1003,22 +1148,13 @@ function ChatBubble({
   runs,
   sessions,
   conversationId,
-  runningCaseId,
-  onRunTest,
-  onViewCase,
+  ...actions
 }: {
   message: ChatMessage;
   runs: ConversationSummary['cdp_runs'];
   sessions: RunSession[];
   conversationId: string | null;
-  runningCaseId: string | null;
-  onRunTest: (
-    testCase: SuiteCaseView,
-    responseId: string,
-    feature: string,
-  ) => void;
-  onViewCase: (caseId: string) => void;
-}) {
+} & CaseActions) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
 
@@ -1033,6 +1169,10 @@ function ChatBubble({
       </motion.div>
     );
   }
+
+  const suite =
+    message.suite ??
+    (!isUser && message.cdpStepsId ? legacySuite(message.cdpStepsId) : null);
 
   return (
     <motion.div
@@ -1052,42 +1192,19 @@ function ChatBubble({
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.text}</p>
-        ) : message.suite ? (
+        ) : suite ? (
           <SuiteReply
-            suite={message.suite}
+            suite={suite}
             overview={message.text}
             responseId={message.id}
             runs={runs}
             sessions={sessions}
             conversationId={conversationId}
-            runningCaseId={runningCaseId}
-            onRunTest={onRunTest}
-            onViewCase={onViewCase}
+            {...actions}
           />
         ) : (
           <FormattedAiText text={message.text} />
         )}
-        {!isUser && !message.suite && message.cdpStepsId ? (
-          <CaseRunButton
-            testCase={{
-              id: message.cdpStepsId,
-              kind: 'success',
-              title: 'Test',
-              explanation: '',
-            }}
-            responseId={message.id}
-            feature=""
-            finished={caseWasRun(
-              runs,
-              sessions,
-              conversationId,
-              message.cdpStepsId,
-            )}
-            runningCaseId={runningCaseId}
-            onRunTest={onRunTest}
-            onViewCase={onViewCase}
-          />
-        ) : null}
         {message.status === 'failed' ? (
           <p className="mt-1 text-[10px] text-red-400/90">Failed to send</p>
         ) : null}
